@@ -75,6 +75,11 @@ input[readonly]{background:var(--sunk);color:var(--muted)}
 .period{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;padding:10px 12px;border-radius:6px;background:var(--in-soft);font-size:13.5px;font-variant-numeric:tabular-nums}
 .period .k{font-weight:700}
 .period .sub{grid-column:2;font-size:12px;color:var(--muted);margin-top:-3px}
+.data-btns{display:flex;flex-wrap:wrap;gap:8px}
+.file-btn{display:inline-flex;align-items:center;cursor:pointer;border-radius:6px;font-weight:500}
+.btn-danger{background:none;border:1px solid var(--out);color:var(--out);padding:8px 12px;font-size:14px;align-self:flex-start}
+.btn-danger.solid{background:var(--out);color:var(--surface);font-weight:700}
+.confirm{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:6px;background:var(--warn-soft);font-size:13.5px}
 .extra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:8px;background:var(--bg);border-radius:6px}
 .extra .r{display:grid;grid-template-columns:118px minmax(0,1fr);gap:6px}
 .extra input{font-size:13.5px;padding:5px 7px;background:var(--surface)}
@@ -237,6 +242,26 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
     <button type="button" class="btn-ghost" id="addExtra">＋ 項目を追加</button>
     <span class="foot">出金はマイナスで入力します（例：-80,000）。ボーナスは支給月と手取り額を入れてください。産休・育休中は支給されないか、減ることが多いです。</span>
   </fieldset>
+
+  <fieldset>
+    <legend>データの保存</legend>
+    <span class="foot" id="savedAt">入力内容はこのスマホに自動で保存されます。</span>
+    <div class="data-btns">
+      <button type="button" class="btn-calc" id="backupBtn">バックアップを保存</button>
+      <label class="btn-plain file-btn" for="restoreFile">バックアップから戻す</label>
+      <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+    </div>
+    <span class="foot">バックアップはファイル（.json）で保存されます。iPhoneでは「"ファイル"に保存」を選ぶと、機種変更のときも引き継げます。</span>
+    <div class="confirm" id="restoreBox" hidden>
+      <span id="restoreMsg"></span>
+      <div class="data-btns"><button type="button" class="btn-calc" id="restoreYes">この内容に戻す</button><button type="button" class="btn-plain" id="restoreNo">やめる</button></div>
+    </div>
+    <button type="button" class="btn-danger" id="resetBtn">最初からやり直す</button>
+    <div class="confirm" id="resetBox" hidden>
+      <span>入力した内容をすべて消して、例の数字に戻します。元に戻せないので、必要なら先にバックアップを保存してください。</span>
+      <div class="data-btns"><button type="button" class="btn-danger solid" id="resetYes">すべて消す</button><button type="button" class="btn-plain" id="resetNo">やめる</button></div>
+    </div>
+  </fieldset>
 </form>
 
 <main>
@@ -285,7 +310,7 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
       <li>「夫婦で共有するリンク」には入力内容がそのまま入っています。リンクを受け取った人は中身を見られるので、送り先に気をつけてください。リンクの内容はサーバーには保存されません。</li>
       <li>振込日はおおよその目安です。勤務先・ハローワーク・加入している健康保険の処理によって前後します。</li>
     </ul>
-    <p class="foot" style="margin-top:12px">アプリのバージョン：<span id="appVer">2026.10.05-7</span></p>
+    <p class="foot" style="margin-top:12px">アプリのバージョン：<span id="appVer">2026.10.05-8</span></p>
     <p class="foot" style="margin-top:12px">入力した内容はこのブラウザの中だけで計算され、どこにも送信されません。概算のシミュレーションのため、正確な金額は勤務先や社会保険労務士にご確認ください。</p>
   </section>
 </main>
@@ -362,7 +387,7 @@ function applyAuto(){
   if(state.spAutoTake){const c=calcTakehome(state.spSalary,state.spAge40,estResTax(state.spSalary||0,0).tax);state.spouse=c.take;$("spouse").value=comma(c.take);showBreak($("spBreak"),c,"（月給から概算）")}}
 function loadForm(){fields.forEach(f=>{const el=$(f);if(el.type==="checkbox")el.checked=!!state[f];else if(el.classList.contains("money"))el.value=comma(state[f]??0);else el.value=state[f]??""});$("customWrap").hidden=state.endMode!=="custom";$("spWrap").hidden=!state.spouseLeave;renderExtras()}
 function readForm(){fields.forEach(f=>{const el=$(f);state[f]=el.type==="checkbox"?el.checked:el.classList.contains("money")?toNum(el.value):(el.type==="number"?Number(el.value||0):el.value)});$("customWrap").hidden=state.endMode!=="custom";$("spWrap").hidden=!state.spouseLeave}
-function save(){try{localStorage.setItem("leaveplan",JSON.stringify(state))}catch(e){}}
+function save(){try{localStorage.setItem("leaveplan",JSON.stringify(state));const t=new Date();const el=document.getElementById("savedAt");if(el)el.textContent=`自動保存しました（${t.getHours()}:${String(t.getMinutes()).padStart(2,"0")}）。入力内容はこのスマホの中だけに保存されます。`}catch(e){}}
 
 function renderExtras(){const box=$("extras");box.innerHTML="";state.extras.forEach((x,i)=>{
   const d=document.createElement("div");d.className="extra";
@@ -601,6 +626,25 @@ try{const h=location.hash;if(h.startsWith("#d=")){pending=dec(h.slice(3));$("imp
 const clearHash=()=>{try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}};
 $("importYes").addEventListener("click",()=>{if(pending){state=Object.assign(JSON.parse(JSON.stringify(defaults)),pending);save();loadForm();update()}$("importBar").hidden=true;clearHash()});
 $("importNo").addEventListener("click",()=>{$("importBar").hidden=true;clearHash()});
+// バックアップ・復元・リセット
+$("backupBtn").addEventListener("click",async()=>{readForm();const now=new Date();const ymdS=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+  const json=JSON.stringify({app:"leaveplan",version:1,savedAt:now.toISOString(),state},null,1);const name=`育休マネー_バックアップ_${ymdS}.json`;
+  const msg=t=>{$("savedAt").textContent=t};
+  try{const file=new File([json],name,{type:"application/json"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});msg("バックアップを保存しました。");return}}catch(e){if(e&&e.name==="AbortError")return}
+  try{const url=URL.createObjectURL(new Blob([json],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);msg("バックアップのファイルを保存しました。")}
+  catch(e){msg("このブラウザではファイルを保存できませんでした。上の「夫婦で共有するリンクを作る」で作ったリンクを自分宛てに送っておくと、バックアップの代わりになります。")}});
+let restorePending=null;
+$("restoreFile").addEventListener("change",e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{const o=JSON.parse(rd.result);const st=o&&o.state?o.state:o;if(!st||typeof st!=="object"||!("due" in st))throw 0;restorePending=st;
+    const when=o.savedAt?new Date(o.savedAt):null;$("restoreMsg").textContent=`${when?`${when.getFullYear()}年${when.getMonth()+1}月${when.getDate()}日 ${when.getHours()}:${String(when.getMinutes()).padStart(2,"0")}に保存した`:"選んだ"}バックアップを読み込みます。いま入っている内容はこのバックアップに置き換わります。`;$("restoreBox").hidden=false}
+    catch(err){restorePending=null;$("restoreBox").hidden=false;$("restoreMsg").textContent="このファイルは読み込めませんでした。「バックアップを保存」で作ったファイルを選んでください。"}
+    e.target.value=""};rd.readAsText(f)});
+$("restoreYes").addEventListener("click",()=>{if(restorePending){state=Object.assign(JSON.parse(JSON.stringify(defaults)),restorePending,{bonusSeeded:true});save();loadForm();update();$("savedAt").textContent="バックアップから戻しました。"}restorePending=null;$("restoreBox").hidden=true});
+$("restoreNo").addEventListener("click",()=>{restorePending=null;$("restoreBox").hidden=true});
+$("resetBtn").addEventListener("click",()=>{$("resetBox").hidden=false});
+$("resetNo").addEventListener("click",()=>{$("resetBox").hidden=true});
+$("resetYes").addEventListener("click",()=>{try{localStorage.removeItem("leaveplan")}catch(e){}location.reload()});
 $("f").addEventListener("input",e=>{if(!e.target.id.startsWith("ex"))update()});
 $("f").addEventListener("change",e=>{if(!e.target.id.startsWith("ex"))update()});
 $("f").addEventListener("submit",e=>e.preventDefault());

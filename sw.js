@@ -1,6 +1,6 @@
 // 産休育休マネープラン：オフラインでも開けるようにするための仕組み
 // アプリを更新したら、下の VERSION の数字を1つ上げてください。
-const VERSION = "v15";
+const VERSION = "v16";
 const CACHE = "leaveplan-" + VERSION;
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
