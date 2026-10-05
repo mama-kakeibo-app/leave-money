@@ -72,6 +72,9 @@ button{font:inherit;cursor:pointer;border-radius:6px}
 .brk .t{color:var(--ink);font-weight:700;border-top:1px solid var(--line);padding-top:3px;margin-top:2px}
 .brk .r{text-align:right}
 input[readonly]{background:var(--sunk);color:var(--muted)}
+.period{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;padding:10px 12px;border-radius:6px;background:var(--in-soft);font-size:13.5px;font-variant-numeric:tabular-nums}
+.period .k{font-weight:700}
+.period .sub{grid-column:2;font-size:12px;color:var(--muted);margin-top:-3px}
 .extra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:8px;background:var(--bg);border-radius:6px}
 .extra .r{display:grid;grid-template-columns:118px minmax(0,1fr);gap:6px}
 .extra input{font-size:13.5px;padding:5px 7px;background:var(--surface)}
@@ -156,6 +159,7 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
       </select>
     </label>
     <label class="f" id="customWrap" hidden>復職前日（育休最終日）<input type="date" id="endCustom"></label>
+    <div class="period" id="periodBox" aria-live="polite"></div>
   </fieldset>
 
   <fieldset>
@@ -269,7 +273,7 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
       <li>「夫婦で共有するリンク」には入力内容がそのまま入っています。リンクを受け取った人は中身を見られるので、送り先に気をつけてください。リンクの内容はサーバーには保存されません。</li>
       <li>振込日はおおよその目安です。勤務先・ハローワーク・加入している健康保険の処理によって前後します。</li>
     </ul>
-    <p class="foot" style="margin-top:12px">アプリのバージョン：<span id="appVer">2026.10.05-4</span></p>
+    <p class="foot" style="margin-top:12px">アプリのバージョン：<span id="appVer">2026.10.05-5</span></p>
     <p class="foot" style="margin-top:12px">入力した内容はこのブラウザの中だけで計算され、どこにも送信されません。概算のシミュレーションのため、正確な金額は勤務先や社会保険労務士にご確認ください。</p>
   </section>
 </main>
@@ -539,6 +543,12 @@ function render(r){
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 function update(){readForm();applyAuto();save();$("hhTotal").textContent=yen((state.savings||0)+(state.spSavings||0));const r=compute(state);if(!r)return;render(r);
+  const wd=t=>"日月火水木金土"[t.getUTCDay()];const fd=t=>`${t.getUTCFullYear()}年${t.getUTCMonth()+1}月${t.getUTCDate()}日（${wd(t)}）`;
+  $("periodBox").innerHTML=`<span class="k">産休</span><span>${fd(r.leaveStart)} 〜 ${fd(r.postEnd)}</span>
+   <span class="sub">産前 ${days(r.leaveStart,r.birth)}日・産後 ${days(addDays(r.birth,1),r.postEnd)}日（出産日は予定日として計算）</span>
+   <span class="k">育休</span><span>${fd(r.ccStart)} 〜 ${fd(r.ccEnd)}</span>
+   <span class="sub">${days(r.ccStart,r.ccEnd)}日間</span>
+   <span class="k">復職</span><span>${fd(r.ret)}</span>`;
   if(r.sp){const p=r.sp;let t=`${ymd(p.hs)}〜${md(p.he)}。`;if(p.pDays)t+=`うち${p.pDays}日は産後パパ育休（出生時育児休業）。`;
     t+=p.in8>=14?"出産後8週以内に14日以上取るので、配偶者に13%上乗せ。":"出産後8週以内の育休が14日未満のため、配偶者の13%上乗せはありません。";
     t+=p.motherOK?"あなたにも13%上乗せがつきます。":"この日程だと、あなたの13%上乗せはつきません。";$("spInfo").textContent=t}}
