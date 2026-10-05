@@ -67,6 +67,11 @@ button{font:inherit;cursor:pointer;border-radius:6px}
 .import{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-radius:8px;background:var(--warn-soft);font-size:14px}
 .import-btns{display:flex;gap:8px}
 .btn-plain{background:var(--surface);color:var(--ink);border:1px solid var(--line);padding:8px 12px;font-size:14px}
+.auto{display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:6px;background:var(--sunk)}
+.brk{display:grid;grid-template-columns:1fr auto;gap:1px 12px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.brk .t{color:var(--ink);font-weight:700;border-top:1px solid var(--line);padding-top:3px;margin-top:2px}
+.brk .r{text-align:right}
+input[readonly]{background:var(--sunk);color:var(--muted)}
 .extra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:8px;background:var(--bg);border-radius:6px}
 .extra .r{display:grid;grid-template-columns:118px minmax(0,1fr);gap:6px}
 .extra input{font-size:13.5px;padding:5px 7px;background:var(--surface)}
@@ -159,6 +164,11 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
       <label class="f">月給（額面）<span class="yen"><input type="text" class="money" id="spSalary" inputmode="numeric" autocomplete="off"></span></label>
       <label class="f">月の手取り<span class="yen"><input type="text" class="money" id="spouse" inputmode="numeric" autocomplete="off"></span></label>
     </div>
+    <div class="auto">
+      <label class="chk"><input type="checkbox" id="spAutoTake">手取りを月給から自動計算する</label>
+      <label class="chk" data-auto="sp"><input type="checkbox" id="spAge40">40歳以上（介護保険料がかかる）</label>
+      <div class="brk" id="spBreak" data-auto="sp"></div>
+    </div>
     <label class="f">給料日
       <select id="spPayday"><option value="same">当月払い</option><option value="next">翌月払い</option></select>
     </label>
@@ -176,6 +186,11 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
     <legend>あなたのお給料</legend>
     <label class="f">月給（額面・残業代など込みの平均）<span class="yen"><input type="text" class="money" id="salary" inputmode="numeric" autocomplete="off"></span></label>
     <label class="f">月の手取り<span class="yen"><input type="text" class="money" id="takehome" inputmode="numeric" autocomplete="off"></span></label>
+    <div class="auto">
+      <label class="chk"><input type="checkbox" id="autoTake">手取りを月給から自動計算する</label>
+      <label class="chk" data-auto="me"><input type="checkbox" id="age40">40歳以上（介護保険料がかかる）</label>
+      <div class="brk" id="takeBreak" data-auto="me"></div>
+    </div>
     <label class="f">給料日
       <select id="payday"><option value="same">当月払い（その月の分をその月に）</option><option value="next">翌月払い（前月の分を翌月に）</option></select>
     </label>
@@ -244,6 +259,7 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
       <li>出産手当金は「月給 ÷ 30 × 2/3」を日額とし、産前42日（多胎は98日）＋産後56日分を、産後休業が終わってから一括申請した想定です。産前分だけ先に申請すると早く受け取れます。</li>
       <li>育児休業給付金は休業開始から180日まで67%、それ以降50%。賃金日額の上限16,540円・下限3,203円（2026年8月〜2027年7月）で計算しています。2か月ごとの申請で、2か月分がまとめて振り込まれる想定です。</li>
       <li>産休・育休中は申出により健康保険料・厚生年金保険料が免除され、給付金は非課税です。</li>
+      <li>「手取りを月給から自動計算する」は、協会けんぽ栃木県の2026年度の料率（健康保険9.82%、40歳以上は介護保険1.62%を加算、子ども・子育て支援金0.23%、いずれも半分が本人負担）、厚生年金18.3%（半分）、雇用保険0.5%で社会保険料を計算し、所得税は扶養なしの年額を12で割って概算します。健康保険組合や薬剤師国保に入っている場合、扶養家族がいる場合は実際の手取りと差が出ます。</li>
       <li>「月給から住民税を計算」は、昨年も今と同じ月給だったとして、社会保険料を年収の15%、基礎控除43万円、税率10%、均等割5,000円で概算します。お住まいの地域の上乗せ分や各種控除は反映されません。</li>
       <li>住民税は前年の所得にかかるため、休業中も納付書で払います（6月・8月・10月・翌1月）。1〜5月に休業に入る場合は、5月分までを最後のお給料から一括で引かれるのが原則です。翌年度以降の額は働いた月数からの概算です。</li>
       <li>配偶者の育休のうち、出産後8週以内の最大28日を産後パパ育休（出生時育児休業給付金67%）、残りを通常の育休として計算しています。休業中の配偶者の給与は日割りで減らし、社会保険料の免除による手取りの増加は含めていません。</li>
@@ -253,7 +269,7 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
       <li>「夫婦で共有するリンク」には入力内容がそのまま入っています。リンクを受け取った人は中身を見られるので、送り先に気をつけてください。リンクの内容はサーバーには保存されません。</li>
       <li>振込日はおおよその目安です。勤務先・ハローワーク・加入している健康保険の処理によって前後します。</li>
     </ul>
-    <p class="foot" style="margin-top:12px">アプリのバージョン：<span id="appVer">2026.10.05-3</span></p>
+    <p class="foot" style="margin-top:12px">アプリのバージョン：<span id="appVer">2026.10.05-4</span></p>
     <p class="foot" style="margin-top:12px">入力した内容はこのブラウザの中だけで計算され、どこにも送信されません。概算のシミュレーションのため、正確な金額は勤務先や社会保険労務士にご確認ください。</p>
   </section>
 </main>
@@ -280,13 +296,13 @@ const days=(a,b)=>Math.round((b-a)/864e5)+1;
 // 初期値（例）
 const today=new Date();const ex=addMonths(D(today.getFullYear(),today.getMonth()+1,15),5);
 const defaults={due:ex.toISOString().slice(0,10),multi:false,endMode:"1y",endCustom:"",spouseLeave:false,
-  salary:300000,takehome:235000,payday:"next",resTax:180000,spouse:280000,spSalary:360000,spPayday:"same",spOffset:0,spDays:28,living:330000,savings:1500000,spSavings:800000,bonus:0,birthCost:520000,order:"1",
+  salary:300000,takehome:235000,payday:"next",resTax:180000,spouse:280000,spSalary:360000,spPayday:"same",spOffset:0,spDays:28,living:330000,savings:1500000,spSavings:800000,bonus:0,autoTake:false,age40:false,spAutoTake:false,spAge40:false,birthCost:520000,order:"1",
   extras:[{m:keyAdd(key(ex),-1),label:"ベビー用品（例）",amt:-100000},{m:keyAdd(key(ex),2),label:"妊婦のための支援給付・出生後分（例）",amt:50000}]};
 let state;
 try{state=JSON.parse(localStorage.getItem("leaveplan")||"null")}catch(e){state=null}
 state=Object.assign(JSON.parse(JSON.stringify(defaults)),state||{});
 
-const fields=["due","multi","endMode","endCustom","spouseLeave","salary","takehome","payday","resTax","bonus","spouse","spSalary","spPayday","spOffset","spDays","living","savings","spSavings","birthCost","order"];
+const fields=["due","multi","endMode","endCustom","spouseLeave","salary","takehome","payday","resTax","bonus","autoTake","age40","spAutoTake","spAge40","spouse","spSalary","spPayday","spOffset","spDays","living","savings","spSavings","birthCost","order"];
 // 金額に3けたごとのコンマを付ける
 const toNum=v=>{const t=String(v).replace(/[，,\s円]/g,"").replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248)).replace(/[−ー－]/g,"-");const n=parseInt(t.replace(/(?!^)-/g,"").replace(/[^\d-]/g,""),10);return isNaN(n)?0:n};
 const comma=n=>{n=Number(n)||0;return n===0?"0":n.toLocaleString("ja-JP")};
@@ -297,6 +313,31 @@ function liveComma(el){const v=el.value;const pos=el.selectionStart??v.length;co
   let k=0,p=neg?1:0;while(p<out.length&&k<before){if(/\d/.test(out[p]))k++;p++}
   try{el.setSelectionRange(p,p)}catch(e){}}
 document.addEventListener("input",e=>{const el=e.target;if(el.classList&&el.classList.contains("money")&&!el.id.startsWith("exa"))liveComma(el)},true);
+// 手取りの概算（2026年度：協会けんぽ栃木県の料率、厚生年金9.15%、雇用保険0.5%、所得税は扶養なし）
+const RATE={health:9.82,care:1.62,kodomo:0.23,pension:18.3,emp:0.5};
+function itaxAnnual(inc,socialY){
+  let kyu;if(inc<=1900000)kyu=650000;else if(inc<=3600000)kyu=inc*0.3+80000;else if(inc<=6600000)kyu=inc*0.2+440000;else if(inc<=8500000)kyu=inc*0.1+1100000;else kyu=1950000;
+  const sh=Math.max(0,inc-kyu);
+  const basic=sh<=1320000?950000:sh<=3360000?880000:sh<=4890000?680000:sh<=6550000?630000:sh<=23500000?580000:480000;
+  const t=Math.max(0,Math.floor((sh-socialY-basic)/1000)*1000);
+  const br=[[1950000,.05,0],[3300000,.1,97500],[6950000,.2,427500],[9000000,.23,636000],[18000000,.33,1536000],[40000000,.4,2796000],[Infinity,.45,4796000]];
+  const [,r,d]=br.find(b=>t<=b[0]);return Math.floor((t*r-d)*1.021)}
+function calcTakehome(m,age40,resY){
+  m=Math.max(0,m||0);
+  const health=Math.round(Math.min(m,1390000)*(RATE.health+(age40?RATE.care:0)+RATE.kodomo)/200);
+  const pension=m?Math.round(Math.min(Math.max(m,88000),650000)*RATE.pension/200):0;
+  const emp=Math.round(m*RATE.emp/100);
+  const social=health+pension+emp;
+  const itax=Math.floor(itaxAnnual(m*12,social*12)/12);
+  const res=Math.round((resY||0)/12);
+  return {health,pension,emp,itax,res,take:Math.max(0,m-social-itax-res)}}
+function showBreak(el,c,resNote){el.innerHTML=[["健康保険（子ども・子育て支援金込み）",c.health],["厚生年金",c.pension],["雇用保険",c.emp],["所得税",c.itax],["住民税"+resNote,c.res]].map(([k,v])=>`<span>${k}</span><span class="r">−${v.toLocaleString("ja-JP")}円</span>`).join("")+`<span class="t">手取り</span><span class="r t">${c.take.toLocaleString("ja-JP")}円</span>`}
+function applyAuto(){
+  document.querySelectorAll('[data-auto="me"]').forEach(e=>e.hidden=!state.autoTake);
+  document.querySelectorAll('[data-auto="sp"]').forEach(e=>e.hidden=!state.spAutoTake);
+  $("takehome").readOnly=!!state.autoTake;$("spouse").readOnly=!!state.spAutoTake;
+  if(state.autoTake){const c=calcTakehome(state.salary,state.age40,state.resTax);state.takehome=c.take;$("takehome").value=comma(c.take);showBreak($("takeBreak"),c,"（今年度の年額÷12）")}
+  if(state.spAutoTake){const c=calcTakehome(state.spSalary,state.spAge40,estResTax(state.spSalary||0,0).tax);state.spouse=c.take;$("spouse").value=comma(c.take);showBreak($("spBreak"),c,"（月給から概算）")}}
 function loadForm(){fields.forEach(f=>{const el=$(f);if(el.type==="checkbox")el.checked=!!state[f];else if(el.classList.contains("money"))el.value=comma(state[f]??0);else el.value=state[f]??""});$("customWrap").hidden=state.endMode!=="custom";$("spWrap").hidden=!state.spouseLeave;renderExtras()}
 function readForm(){fields.forEach(f=>{const el=$(f);state[f]=el.type==="checkbox"?el.checked:el.classList.contains("money")?toNum(el.value):(el.type==="number"?Number(el.value||0):el.value)});$("customWrap").hidden=state.endMode!=="custom";$("spWrap").hidden=!state.spouseLeave}
 function save(){try{localStorage.setItem("leaveplan",JSON.stringify(state))}catch(e){}}
@@ -497,7 +538,7 @@ function render(r){
 }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-function update(){readForm();save();$("hhTotal").textContent=yen((state.savings||0)+(state.spSavings||0));const r=compute(state);if(!r)return;render(r);
+function update(){readForm();applyAuto();save();$("hhTotal").textContent=yen((state.savings||0)+(state.spSavings||0));const r=compute(state);if(!r)return;render(r);
   if(r.sp){const p=r.sp;let t=`${ymd(p.hs)}〜${md(p.he)}。`;if(p.pDays)t+=`うち${p.pDays}日は産後パパ育休（出生時育児休業）。`;
     t+=p.in8>=14?"出産後8週以内に14日以上取るので、配偶者に13%上乗せ。":"出産後8週以内の育休が14日未満のため、配偶者の13%上乗せはありません。";
     t+=p.motherOK?"あなたにも13%上乗せがつきます。":"この日程だと、あなたの13%上乗せはつきません。";$("spInfo").textContent=t}}
