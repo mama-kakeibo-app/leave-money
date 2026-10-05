@@ -80,6 +80,8 @@ input[readonly]{background:var(--sunk);color:var(--muted)}
 .btn-danger{background:none;border:1px solid var(--out);color:var(--out);padding:8px 12px;font-size:14px;align-self:flex-start}
 .btn-danger.solid{background:var(--out);color:var(--surface);font-weight:700}
 .confirm{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:6px;background:var(--warn-soft);font-size:13.5px}
+.sub-h{font-weight:700;font-size:13.5px}
+.foot.strong{color:var(--ink);font-weight:700}
 .extra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:8px;background:var(--bg);border-radius:6px}
 .extra .r{display:grid;grid-template-columns:118px minmax(0,1fr);gap:6px}
 .extra input{font-size:13.5px;padding:5px 7px;background:var(--surface)}
@@ -216,6 +218,15 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
     </label>
     <label class="f">今年度の住民税（年額）<span class="yen"><input type="text" class="money" id="resTax" inputmode="numeric" autocomplete="off"></span><span class="hint">5月ごろにもらう「住民税決定通知書」に載っています</span></label>
     <div class="est">
+      <span class="sub-h" id="incLabel">今年の年収（来年度の住民税の計算に使います）</span>
+      <div class="row2">
+        <label class="f">年収（額面）<span class="yen"><input type="text" class="money" id="incThis" inputmode="numeric" autocomplete="off"></span></label>
+        <label class="f">社会保険料（年額）<span class="yen"><input type="text" class="money" id="socThis" inputmode="numeric" autocomplete="off"></span></label>
+      </div>
+      <span class="foot">空欄なら月給と賞与から見込みで計算します。年明けに源泉徴収票をもらったら、「支払金額」と「社会保険料等の金額」を入れると正確になります。</span>
+      <span class="foot strong" id="fyNote"></span>
+    </div>
+    <div class="est">
       <label class="f">昨年の賞与（年間・額面）<span class="yen"><input type="text" class="money" id="bonus" inputmode="numeric" autocomplete="off"></span></label>
       <button type="button" class="btn-calc" id="calcTax">月給から住民税を計算</button>
       <span class="foot" id="taxNote"></span>
@@ -302,6 +313,7 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
       <li>産休・育休中は申出により健康保険料・厚生年金保険料が免除され、給付金は非課税です。</li>
       <li>「手取りを月給から自動計算する」は、協会けんぽ栃木県の2026年度の料率（健康保険9.82%、40歳以上は介護保険1.62%を加算、子ども・子育て支援金0.23%、いずれも半分が本人負担）、厚生年金18.3%（半分）、雇用保険0.5%で社会保険料を計算し、所得税は扶養なしの年額を12で割って概算します。健康保険組合や薬剤師国保に入っている場合、扶養家族がいる場合は実際の手取りと差が出ます。</li>
       <li>「月給から住民税を計算」は、昨年も今と同じ月給だったとして、社会保険料を年収の15%、基礎控除43万円、税率10%、均等割5,000円で概算します。お住まいの地域の上乗せ分や各種控除は反映されません。</li>
+      <li>翌年度以降の住民税は、その前年の給与年収から、給与所得控除・社会保険料（入力がなければ年収の15%）・基礎控除43万円を差し引いて、税率10%と均等割5,000円で計算します。休業した年は給与が少ないので、非課税やごく少額になることがあります。ボーナス欄の金額は手取りなので、額面は手取り÷0.8として計算しています。</li>
       <li>住民税は前年の所得にかかるため、休業中も納付書で払います（6月・8月・10月・翌1月）。1〜5月に休業に入る場合は、5月分までを最後のお給料から一括で引かれるのが原則です。翌年度以降の額は働いた月数からの概算です。</li>
       <li>配偶者の育休のうち、出産後8週以内の最大28日を産後パパ育休（出生時育児休業給付金67%）、残りを通常の育休として計算しています。休業中の配偶者の給与は日割りで減らし、社会保険料の免除による手取りの増加は含めていません。</li>
       <li>出生後休業支援給付金（13%）は、配偶者が出産後8週以内に14日以上育休を取ると配偶者に、出産後16週以内に14日以上取るとあなたにもつく想定です。最大28日分です。</li>
@@ -310,7 +322,7 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
       <li>「夫婦で共有するリンク」には入力内容がそのまま入っています。リンクを受け取った人は中身を見られるので、送り先に気をつけてください。リンクの内容はサーバーには保存されません。</li>
       <li>振込日はおおよその目安です。勤務先・ハローワーク・加入している健康保険の処理によって前後します。</li>
     </ul>
-    <p class="foot" style="margin-top:12px">アプリのバージョン：<span id="appVer">2026.10.05-8</span></p>
+    <p class="foot" style="margin-top:12px">アプリのバージョン：<span id="appVer">2026.10.05-9</span></p>
     <p class="foot" style="margin-top:12px">入力した内容はこのブラウザの中だけで計算され、どこにも送信されません。概算のシミュレーションのため、正確な金額は勤務先や社会保険労務士にご確認ください。</p>
   </section>
 </main>
@@ -337,7 +349,7 @@ const days=(a,b)=>Math.round((b-a)/864e5)+1;
 // 初期値（例）
 const today=new Date();const ex=addMonths(D(today.getFullYear(),today.getMonth()+1,15),5);
 const defaults={due:ex.toISOString().slice(0,10),multi:false,endMode:"1y",endCustom:"",spouseLeave:false,
-  salary:300000,takehome:235000,payday:"next",resTax:180000,spouse:280000,spSalary:360000,spPayday:"same",spOffset:0,spDays:28,living:330000,savings:1500000,spSavings:800000,bonus:0,actualBirth:"",paidDays:0,paidMode:"before",autoTake:false,age40:false,spAutoTake:false,spAge40:false,birthCost:520000,order:"1",
+  salary:300000,takehome:235000,payday:"next",resTax:180000,spouse:280000,spSalary:360000,spPayday:"same",spOffset:0,spDays:28,living:330000,savings:1500000,spSavings:800000,bonus:0,incThis:0,socThis:0,actualBirth:"",paidDays:0,paidMode:"before",autoTake:false,age40:false,spAutoTake:false,spAge40:false,birthCost:520000,order:"1",
   extras:[{m:keyAdd(key(ex),-1),label:"ベビー用品（例）",amt:-100000},{m:keyAdd(key(ex),2),label:"妊婦のための支援給付・出生後分（例）",amt:50000}]};
 let state;
 try{state=JSON.parse(localStorage.getItem("leaveplan")||"null")}catch(e){state=null}
@@ -349,7 +361,7 @@ if(!state.bonusSeeded){const d=parse(state.due)||ex;const ls=addDays(d,-41);let 
     {m:jun,label:"夏のボーナス（配偶者・手取り）",amt:0},{m:dec,label:"冬のボーナス（配偶者・手取り）",amt:0}].concat(state.extras||[]);
   state.bonusSeeded=true}
 
-const fields=["due","actualBirth","multi","paidDays","paidMode","endMode","endCustom","spouseLeave","salary","takehome","payday","resTax","bonus","autoTake","age40","spAutoTake","spAge40","spouse","spSalary","spPayday","spOffset","spDays","living","savings","spSavings","birthCost","order"];
+const fields=["due","actualBirth","multi","paidDays","paidMode","endMode","endCustom","spouseLeave","salary","takehome","payday","resTax","incThis","socThis","bonus","autoTake","age40","spAutoTake","spAge40","spouse","spSalary","spPayday","spOffset","spDays","living","savings","spSavings","birthCost","order"];
 // 金額に3けたごとのコンマを付ける
 const toNum=v=>{const t=String(v).replace(/[，,\s円]/g,"").replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248)).replace(/[−ー－]/g,"-");const n=parseInt(t.replace(/(?!^)-/g,"").replace(/[^\d-]/g,""),10);return isNaN(n)?0:n};
 const comma=n=>{n=Number(n)||0;return n===0?"0":n.toLocaleString("ja-JP")};
@@ -398,6 +410,15 @@ function renderExtras(){const box=$("extras");box.innerHTML="";state.extras.forE
   d.querySelector(".del").addEventListener("click",()=>{state.extras.splice(i,1);renderExtras();update()});
   box.appendChild(d)})}
 // 住民税の概算（昨年の給与所得のみ・扶養なし・標準税率10%・均等割5,000円）
+function resTaxFromIncome(inc,social){
+  inc=Math.max(0,inc||0);let kyu;
+  if(inc<=1900000)kyu=650000;else if(inc<=3600000)kyu=inc*0.3+80000;else if(inc<=6600000)kyu=inc*0.2+440000;else if(inc<=8500000)kyu=inc*0.1+1100000;else kyu=1950000;
+  const shotoku=Math.max(0,Math.floor(inc-kyu));
+  if(shotoku<=450000)return 0;
+  const shaho=social>0?social:Math.round(inc*0.15);
+  const kazei=Math.max(0,Math.floor((shotoku-shaho-430000)/1000)*1000);
+  const wari=Math.max(0,Math.floor((kazei*0.1-2500)/100)*100);
+  return wari+5000}
 function estResTax(monthly,bonus){
   const inc=Math.max(0,monthly*12+bonus);
   let kyu;
@@ -493,16 +514,28 @@ function compute(s){
   if(sp&&sp.motherOK&&firstPay){const d=Math.min(28,days(ccStart,ccEnd));shien=Math.floor(Math.min(s.salary/30,LIMIT.dailyMax)*d*0.13);push(firstPay,"出生後休業支援給付金（13%・28日分）",shien,"public",{est:true,keyItem:true})}
 
   // 住民税
-  const mTax=s.resTax/12;const lsY=leaveStart.getUTCFullYear(),lsM=leaveStart.getUTCMonth()+1;
+  // 以降の年度：その前年に実際にもらう給与と賞与から、控除込みで計算
+  const thisYear=new Date().getFullYear();
+  const bonusGross=y=>(s.extras||[]).filter(x=>x.m&&+x.m.slice(0,4)===y&&x.amt>0&&/ボーナス|賞与/.test(x.label||"")&&!/配偶者/.test(x.label||"")).reduce((t,x)=>t+Math.round(x.amt/0.8),0);
+  function incomeOf(cy){let inc=0;
+    for(let m=1;m<=12;m++){const dm=dim(cy,m);let wd=0;for(let d=1;d<=dm;d++){const t=D(cy,m,d);if(t<leaveStart||t>=ret)wd++}inc+=(s.salary||0)*wd/dm}
+    if(cy===thisYear)inc+=(s.bonus||0);else inc+=bonusGross(cy);return Math.round(inc)}
+  function taxFY(fy){const cy=fy-1;
+    if(cy<thisYear)return {fy,cy,tax:s.resTax||0,inc:null,src:"今年度と同じ額"};
+    if(cy===thisYear&&s.incThis>0){return {fy,cy,inc:s.incThis,tax:resTaxFromIncome(s.incThis,s.socThis||0),src:"入力した年収から計算"}}
+    const inc=incomeOf(cy);return {fy,cy,inc,tax:resTaxFromIncome(inc,0),src:cy===thisYear?"月給と賞与の見込みから計算":"この年にもらう給与から計算"}}
+  const curFY=leaveStart.getUTCMonth()+1<=5?leaveStart.getUTCFullYear()-1:leaveStart.getUTCFullYear();
+  const curTax=taxFY(curFY);
+  const mTax=curTax.tax/12;const lsY=leaveStart.getUTCFullYear(),lsM=leaveStart.getUTCMonth()+1;
   const retK=key(ret);
-  if(lsM<=5){const lump=Math.round(mTax*(5-lsM+1));push(lastPayDate,"住民税（5月分までを最後のお給料から一括）",-lump,"out",{keyItem:true})}
+  if(lsM<=5){const lump=Math.round(mTax*(5-lsM+1));push(lastPayDate,`住民税（${curFY}年度の5月分までを最後のお給料から一括）`,-lump,"out",{keyItem:true})}
   else{const remain=Math.round(mTax*(12-lsM+1+5));const dues=[D(lsY,8,31),D(lsY,10,31),D(lsY+1,1,31)].filter(d=>(d.getUTCMonth()+1)>lsM+1||d.getUTCFullYear()>lsY);
-    dues.forEach(d=>push(d,"住民税（納付書・今年度の残り）",-Math.round(remain/dues.length),"out",{keyItem:true}))}
-  // 以降の年度：前年に給与をもらった月数から概算
+    dues.forEach(d=>push(d,`住民税（${curFY}年度の残り・納付書）`,-Math.round(remain/dues.length),"out",{keyItem:true}))}
+  const fyInfo=curTax.inc!=null?[curTax]:[];
   const firstFY=lsM<=5?lsY:lsY+1;
-  for(let fy=firstFY;fy<=firstFY+3;fy++){const cy=fy-1;let months=0;
-    for(let m=1;m<=12;m++){const t=D(cy,m,15);if(t<leaveStart||t>=ret)months++}
-    const tax=Math.round(s.resTax*months/12);if(tax<=0)continue;
+  for(let fy=firstFY;fy<=firstFY+2;fy++){const {cy,tax,inc,src}=taxFY(fy);
+    fyInfo.push({fy,cy,tax,inc,src});
+    if(tax<=0)continue;
     [D(fy,6,30),D(fy,8,31),D(fy,10,31),D(fy+1,1,31)].forEach(d=>{if(key(d)<retK)push(d,`住民税（${fy}年度・${cy}年の所得分）`,-Math.round(tax/4),"out",{est:true,keyItem:true})})}
 
   // 児童手当
@@ -531,7 +564,7 @@ function compute(s){
   const start=(s.savings||0)+(s.spSavings||0);let bal=start;const months=keys.map(kk=>{const items=list.filter(e=>e.k===kk);const inn=items.filter(e=>e.amt>0).reduce((t,e)=>t+e.amt,0);const out=items.filter(e=>e.amt<0).reduce((t,e)=>t+e.amt,0);bal+=inn+out;
     const own=items.filter(e=>e.amt>0&&(e.cat==="own"||e.cat==="public")&&!/児童手当/.test(e.label)).reduce((t,e)=>t+e.amt,0);
     return {k:kk,items,inn,out,net:inn+out,bal,own}});
-  return {birth,due,actual:!!parse(s.actualBirth),leaveStart,legalStart,paidStart,paidEnd,paidUsed,lastWork,postEnd,ccStart,ccEnd,ret,shDaily,shTotal,periods,shien,months,list,
+  return {fyInfo,birth,due,actual:!!parse(s.actualBirth),leaveStart,legalStart,paidStart,paidEnd,paidUsed,lastWork,postEnd,ccStart,ccEnd,ret,shDaily,shTotal,periods,shien,months,list,
     total67:addDays(ccStart,179),sp,start};
 }
 
@@ -598,6 +631,8 @@ function render(r){
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 function update(){readForm();applyAuto();save();$("hhTotal").textContent=yen((state.savings||0)+(state.spSavings||0));const r=compute(state);if(!r)return;render(r);
+  const ty=new Date().getFullYear();$("incLabel").textContent=`${ty}年の年収（${ty+1}年度の住民税の計算に使います）`;
+  $("fyNote").innerHTML=r.fyInfo.map(f=>`${f.fy}年度（${f.cy}年の収入分）：${f.tax.toLocaleString("ja-JP")}円${f.inc!=null?`（年収${(f.inc/10000).toLocaleString("ja-JP",{maximumFractionDigits:1})}万円・${f.src}）`:`（${f.src}）`}`).join("<br>");
   const wd=t=>"日月火水木金土"[t.getUTCDay()];const fd=t=>`${t.getUTCFullYear()}年${t.getUTCMonth()+1}月${t.getUTCDate()}日（${wd(t)}）`;
   const paidRow=r.paidStart?`<span class="k">有給</span><span>${fd(r.paidStart)} 〜 ${fd(r.paidEnd)}</span>
    <span class="sub">${r.paidUsed}日分を使用（この間はお給料が満額出ます）${state.paidMode==="instead"&&r.paidUsed<(state.paidDays||0)?`。産前の期間に使えるのは${r.paidUsed}日までです`:""}</span>`:"";
