@@ -630,6 +630,7 @@ $("importNo").addEventListener("click",()=>{$("importBar").hidden=true;clearHash
 $("backupBtn").addEventListener("click",async()=>{readForm();const now=new Date();const ymdS=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
   const json=JSON.stringify({app:"leaveplan",version:1,savedAt:now.toISOString(),state},null,1);const name=`育休マネー_バックアップ_${ymdS}.json`;
   const msg=t=>{$("savedAt").textContent=t};
+  if(!/github\.io$/.test(location.hostname)){msg("このページではファイルを保存できません。ホーム画面に追加したアプリ（GitHub版）で保存してください。");return}
   try{const file=new File([json],name,{type:"application/json"});
     if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});msg("バックアップを保存しました。");return}}catch(e){if(e&&e.name==="AbortError")return}
   try{const url=URL.createObjectURL(new Blob([json],{type:"application/json"}));const a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);msg("バックアップのファイルを保存しました。")}
