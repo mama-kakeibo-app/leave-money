@@ -1,6 +1,6 @@
 // 産休育休マネープラン：オフラインでも開けるようにするための仕組み
 // アプリを更新したら、下の VERSION の数字を1つ上げてください。
-const VERSION = "v10";
+const VERSION = "v11";
 const CACHE = "leaveplan-" + VERSION;
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
@@ -20,7 +20,7 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   // ネットにつながっていれば最新を取り、つながらなければ保存しておいたものを使う
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, new URL(e.request.url).origin === self.location.origin ? { cache: "no-store" } : {})
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(e.request, copy));
