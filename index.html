@@ -156,8 +156,8 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
   <fieldset>
     <legend>配偶者</legend>
     <div class="row2">
-      <label class="f">月給（額面）<span class="yen"><input type="number" id="spSalary" inputmode="numeric" step="1000" min="0"></span></label>
-      <label class="f">月の手取り<span class="yen"><input type="number" id="spouse" inputmode="numeric" step="1000" min="0"></span></label>
+      <label class="f">月給（額面）<span class="yen"><input type="text" class="money" id="spSalary" inputmode="numeric" autocomplete="off"></span></label>
+      <label class="f">月の手取り<span class="yen"><input type="text" class="money" id="spouse" inputmode="numeric" autocomplete="off"></span></label>
     </div>
     <label class="f">給料日
       <select id="spPayday"><option value="same">当月払い</option><option value="next">翌月払い</option></select>
@@ -174,14 +174,14 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
 
   <fieldset>
     <legend>あなたのお給料</legend>
-    <label class="f">月給（額面・残業代など込みの平均）<span class="yen"><input type="number" id="salary" inputmode="numeric" step="1000" min="0"></span></label>
-    <label class="f">月の手取り<span class="yen"><input type="number" id="takehome" inputmode="numeric" step="1000" min="0"></span></label>
+    <label class="f">月給（額面・残業代など込みの平均）<span class="yen"><input type="text" class="money" id="salary" inputmode="numeric" autocomplete="off"></span></label>
+    <label class="f">月の手取り<span class="yen"><input type="text" class="money" id="takehome" inputmode="numeric" autocomplete="off"></span></label>
     <label class="f">給料日
       <select id="payday"><option value="same">当月払い（その月の分をその月に）</option><option value="next">翌月払い（前月の分を翌月に）</option></select>
     </label>
-    <label class="f">今年度の住民税（年額）<span class="yen"><input type="number" id="resTax" inputmode="numeric" step="1000" min="0"></span><span class="hint">5月ごろにもらう「住民税決定通知書」に載っています</span></label>
+    <label class="f">今年度の住民税（年額）<span class="yen"><input type="text" class="money" id="resTax" inputmode="numeric" autocomplete="off"></span><span class="hint">5月ごろにもらう「住民税決定通知書」に載っています</span></label>
     <div class="est">
-      <label class="f">昨年の賞与（年間・額面）<span class="yen"><input type="number" id="bonus" inputmode="numeric" step="10000" min="0"></span></label>
+      <label class="f">昨年の賞与（年間・額面）<span class="yen"><input type="text" class="money" id="bonus" inputmode="numeric" autocomplete="off"></span></label>
       <button type="button" class="btn-calc" id="calcTax">月給から住民税を計算</button>
       <span class="foot" id="taxNote"></span>
     </div>
@@ -189,14 +189,14 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
 
   <fieldset>
     <legend>家計</legend>
-    <label class="f">毎月の生活費（家賃・食費など）<span class="yen"><input type="number" id="living" inputmode="numeric" step="1000" min="0"></span></label>
+    <label class="f">毎月の生活費（家賃・食費など）<span class="yen"><input type="text" class="money" id="living" inputmode="numeric" autocomplete="off"></span></label>
     <div class="row2">
-      <label class="f">あなたの貯蓄<span class="yen"><input type="number" id="savings" inputmode="numeric" step="10000" min="0"></span></label>
-      <label class="f">配偶者の貯蓄<span class="yen"><input type="number" id="spSavings" inputmode="numeric" step="10000" min="0"></span></label>
+      <label class="f">あなたの貯蓄<span class="yen"><input type="text" class="money" id="savings" inputmode="numeric" autocomplete="off"></span></label>
+      <label class="f">配偶者の貯蓄<span class="yen"><input type="text" class="money" id="spSavings" inputmode="numeric" autocomplete="off"></span></label>
     </div>
     <div class="hh"><span>世帯の貯蓄の合計</span><b id="hhTotal"></b></div>
     <div class="row2">
-      <label class="f">出産費用の見込み<span class="yen"><input type="number" id="birthCost" inputmode="numeric" step="10000" min="0"></span></label>
+      <label class="f">出産費用の見込み<span class="yen"><input type="text" class="money" id="birthCost" inputmode="numeric" autocomplete="off"></span></label>
       <label class="f">何人目のお子さん<select id="order"><option value="1">1人目</option><option value="2">2人目</option><option value="3">3人目以降</option></select></label>
     </div>
   </fieldset>
@@ -286,16 +286,26 @@ try{state=JSON.parse(localStorage.getItem("leaveplan")||"null")}catch(e){state=n
 state=Object.assign(JSON.parse(JSON.stringify(defaults)),state||{});
 
 const fields=["due","multi","endMode","endCustom","spouseLeave","salary","takehome","payday","resTax","bonus","spouse","spSalary","spPayday","spOffset","spDays","living","savings","spSavings","birthCost","order"];
-function loadForm(){fields.forEach(f=>{const el=$(f);if(el.type==="checkbox")el.checked=!!state[f];else el.value=state[f]??""});$("customWrap").hidden=state.endMode!=="custom";$("spWrap").hidden=!state.spouseLeave;renderExtras()}
-function readForm(){fields.forEach(f=>{const el=$(f);state[f]=el.type==="checkbox"?el.checked:(el.type==="number"?Number(el.value||0):el.value)});$("customWrap").hidden=state.endMode!=="custom";$("spWrap").hidden=!state.spouseLeave}
+// 金額に3けたごとのコンマを付ける
+const toNum=v=>{const t=String(v).replace(/[，,\s円]/g,"").replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248)).replace(/[−ー－]/g,"-");const n=parseInt(t.replace(/(?!^)-/g,"").replace(/[^\d-]/g,""),10);return isNaN(n)?0:n};
+const comma=n=>{n=Number(n)||0;return n===0?"0":n.toLocaleString("ja-JP")};
+function liveComma(el){const v=el.value;const pos=el.selectionStart??v.length;const before=v.slice(0,pos).replace(/[^\d]/g,"").length;
+  const neg=/^\s*[-−ー－]/.test(v);const digits=v.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248)).replace(/[^\d]/g,"").replace(/^0+(?=\d)/,"");
+  if(!digits){el.value=neg?"-":"";return}
+  const out=(neg?"-":"")+Number(digits).toLocaleString("ja-JP");el.value=out;
+  let k=0,p=neg?1:0;while(p<out.length&&k<before){if(/\d/.test(out[p]))k++;p++}
+  try{el.setSelectionRange(p,p)}catch(e){}}
+document.addEventListener("input",e=>{const el=e.target;if(el.classList&&el.classList.contains("money")&&!el.id.startsWith("exa"))liveComma(el)},true);
+function loadForm(){fields.forEach(f=>{const el=$(f);if(el.type==="checkbox")el.checked=!!state[f];else if(el.classList.contains("money"))el.value=comma(state[f]??0);else el.value=state[f]??""});$("customWrap").hidden=state.endMode!=="custom";$("spWrap").hidden=!state.spouseLeave;renderExtras()}
+function readForm(){fields.forEach(f=>{const el=$(f);state[f]=el.type==="checkbox"?el.checked:el.classList.contains("money")?toNum(el.value):(el.type==="number"?Number(el.value||0):el.value)});$("customWrap").hidden=state.endMode!=="custom";$("spWrap").hidden=!state.spouseLeave}
 function save(){try{localStorage.setItem("leaveplan",JSON.stringify(state))}catch(e){}}
 
 function renderExtras(){const box=$("extras");box.innerHTML="";state.extras.forEach((x,i)=>{
   const d=document.createElement("div");d.className="extra";
-  d.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px;min-width:0"><div class="r"><input type="month" id="exm${i}" value="${x.m}" aria-label="月"><input type="text" id="exl${i}" value="${x.label.replace(/"/g,"&quot;")}" aria-label="内容" placeholder="内容"></div><div class="yen"><input type="number" id="exa${i}" class="${x.amt>0?"plus":x.amt<0?"minus":""}" value="${x.amt}" step="1000" aria-label="金額"></div></div><button type="button" class="del" aria-label="この項目を削除">×</button>`;
+  d.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px;min-width:0"><div class="r"><input type="month" id="exm${i}" value="${x.m}" aria-label="月"><input type="text" id="exl${i}" value="${x.label.replace(/"/g,"&quot;")}" aria-label="内容" placeholder="内容"></div><div class="yen"><input type="text" id="exa${i}" class="money ${x.amt>0?"plus":x.amt<0?"minus":""}" value="${comma(x.amt)}" autocomplete="off" aria-label="金額（出金はマイナス）"></div></div><button type="button" class="del" aria-label="この項目を削除">×</button>`;
   d.querySelector(`#exm${i}`).addEventListener("input",e=>{x.m=e.target.value;update()});
   d.querySelector(`#exl${i}`).addEventListener("input",e=>{x.label=e.target.value;update()});
-  d.querySelector(`#exa${i}`).addEventListener("input",e=>{x.amt=Number(e.target.value||0);e.target.classList.toggle("plus",x.amt>0);e.target.classList.toggle("minus",x.amt<0);update()});
+  d.querySelector(`#exa${i}`).addEventListener("input",e=>{liveComma(e.target);x.amt=toNum(e.target.value);e.target.classList.toggle("plus",x.amt>0);e.target.classList.toggle("minus",x.amt<0);update()});
   d.querySelector(".del").addEventListener("click",()=>{state.extras.splice(i,1);renderExtras();update()});
   box.appendChild(d)})}
 // 住民税の概算（昨年の給与所得のみ・扶養なし・標準税率10%・均等割5,000円）
@@ -310,7 +320,7 @@ function estResTax(monthly,bonus){
   const wari=Math.max(0,Math.floor((kazei*0.1-2500)/100)*100);
   return {inc,tax:wari+5000}}
 $("calcTax").addEventListener("click",()=>{readForm();const r=estResTax(state.salary||0,state.bonus||0);
-  $("resTax").value=r.tax;update();
+  $("resTax").value=comma(r.tax);update();
   $("taxNote").textContent=`年収${(r.inc/10000).toLocaleString("ja-JP",{maximumFractionDigits:1})}万円（月給×12か月＋賞与）として計算した目安です。扶養家族、生命保険料、ふるさと納税などの控除は含みません。`});
 $("addExtra").addEventListener("click",()=>{const b=parse(state.due);state.extras.push({m:b?key(b):"",label:"",amt:0});renderExtras();update()});
 
