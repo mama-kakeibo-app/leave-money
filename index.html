@@ -62,6 +62,11 @@ button{font:inherit;cursor:pointer;border-radius:6px}
 .est{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:6px;background:var(--sunk)}
 .btn-calc{background:var(--in);color:var(--surface);border:0;padding:8px 12px;font-weight:700;font-size:14px}
 .btn-calc:hover{filter:brightness(1.08)}
+.share{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.share #shareOut{flex:1 1 100%;font-size:12.5px}
+.import{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-radius:8px;background:var(--warn-soft);font-size:14px}
+.import-btns{display:flex;gap:8px}
+.btn-plain{background:var(--surface);color:var(--ink);border:1px solid var(--line);padding:8px 12px;font-size:14px}
 .extra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:8px;background:var(--bg);border-radius:6px}
 .extra .r{display:grid;grid-template-columns:118px minmax(0,1fr);gap:6px}
 .extra input{font-size:13.5px;padding:5px 7px;background:var(--surface)}
@@ -118,6 +123,17 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
   <h1>産休育休マネープラン</h1>
   <p>出産予定日とお給料を入れると、産休・育休中に「いつ・いくら」入ってきて出ていくかを月ごとに並べます。給付金の上限額は2026年8月1日改定のものです。</p>
 </header>
+
+<div class="import" id="importBar" hidden>
+  <div><b>共有された内容が届いています。</b><br>読み込むと、いまこのスマホに入っている内容は共有された内容に置き換わります。</div>
+  <div class="import-btns"><button type="button" class="btn-calc" id="importYes">読み込む</button><button type="button" class="btn-plain" id="importNo">読み込まない</button></div>
+</div>
+
+<div class="share">
+  <button type="button" class="btn-calc" id="shareBtn">夫婦で共有するリンクを作る</button>
+  <span class="foot" id="shareMsg">いまの入力内容が入ったリンクを作ります。LINEなどで配偶者に送ってください。</span>
+  <input type="text" id="shareOut" readonly hidden aria-label="共有リンク">
+</div>
 
 <div class="grid">
 <form id="f" autocomplete="off">
@@ -233,6 +249,7 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
       <li>出生後休業支援給付金（13%）は、配偶者が出産後8週以内に14日以上育休を取ると配偶者に、出産後16週以内に14日以上取るとあなたにもつく想定です。最大28日分です。</li>
       <li>出産育児一時金（50万円）は病院への直接支払制度を使う想定です。費用が50万円を下回れば差額を後から受け取れます。出産費用の無償化（2026年6月公布の改正法）は施行日が未定のため反映していません。</li>
       <li>児童手当は3歳未満で月15,000円（第3子以降30,000円）、出生の翌月分から、偶数月に前月までの2か月分が支給されます。</li>
+      <li>「夫婦で共有するリンク」には入力内容がそのまま入っています。リンクを受け取った人は中身を見られるので、送り先に気をつけてください。リンクの内容はサーバーには保存されません。</li>
       <li>振込日はおおよその目安です。勤務先・ハローワーク・加入している健康保険の処理によって前後します。</li>
     </ul>
     <p class="foot" style="margin-top:12px">入力した内容はこのブラウザの中だけで計算され、どこにも送信されません。概算のシミュレーションのため、正確な金額は勤務先や社会保険労務士にご確認ください。</p>
@@ -473,6 +490,22 @@ function update(){readForm();save();$("hhTotal").textContent=yen((state.savings|
     t+=p.in8>=14?"出産後8週以内に14日以上取るので、配偶者に13%上乗せ。":"出産後8週以内の育休が14日未満のため、配偶者の13%上乗せはありません。";
     t+=p.motherOK?"あなたにも13%上乗せがつきます。":"この日程だと、あなたの13%上乗せはつきません。";$("spInfo").textContent=t}}
 loadForm();
+// 夫婦で共有：入力内容をリンクの#以降に入れる（#以降はサーバーに送られない）
+const APP_URL="https://mama-kakeibo-app.github.io/leave-money/";
+const enc=o=>{const b=new TextEncoder().encode(JSON.stringify(o));let t="";b.forEach(c=>t+=String.fromCharCode(c));return btoa(t).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")};
+const dec=t=>{t=t.replace(/-/g,"+").replace(/_/g,"/");const bin=atob(t);const b=Uint8Array.from(bin,c=>c.charCodeAt(0));return JSON.parse(new TextDecoder().decode(b))};
+function baseUrl(){return /github\.io$/.test(location.hostname)?location.origin+location.pathname:APP_URL}
+$("shareBtn").addEventListener("click",()=>{readForm();const url=baseUrl()+"#d="+enc(state);
+  const out=$("shareOut");out.value=url;
+  const showCopy=()=>{out.hidden=false;out.focus();out.select();$("shareMsg").textContent="このリンクを長押ししてコピーし、配偶者に送ってください。"};
+  if(navigator.share){navigator.share({title:"産休育休マネープラン",text:"育休中のお金の計画を共有します",url}).then(()=>{$("shareMsg").textContent="共有しました。数字を変えたら、もう一度リンクを送ってください。"}).catch(e=>{if(e&&e.name==="AbortError")return;showCopy()})}
+  else if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>{out.hidden=false;$("shareMsg").textContent="リンクをコピーしました。LINEなどに貼り付けて送ってください。"}).catch(showCopy)}
+  else showCopy()});
+let pending=null;
+try{const h=location.hash;if(h.startsWith("#d=")){pending=dec(h.slice(3));$("importBar").hidden=false}}catch(e){pending=null}
+const clearHash=()=>{try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}};
+$("importYes").addEventListener("click",()=>{if(pending){state=Object.assign(JSON.parse(JSON.stringify(defaults)),pending);save();loadForm();update()}$("importBar").hidden=true;clearHash()});
+$("importNo").addEventListener("click",()=>{$("importBar").hidden=true;clearHash()});
 $("f").addEventListener("input",e=>{if(!e.target.id.startsWith("ex"))update()});
 $("f").addEventListener("change",e=>{if(!e.target.id.startsWith("ex"))update()});
 $("f").addEventListener("submit",e=>e.preventDefault());
