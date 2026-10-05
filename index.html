@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>産休育休マネープラン</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="出産予定日とお給料から、産休・育休中の給付金や住民税の入出金と貯蓄残高を月ごとに試算します。">
+<meta name="theme-color" content="#1D7566">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="育休マネー">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+/* Layout: 左に入力（PCでは追従）、右に「いつ・いくら」の結果。スマホでは縦一列。 */
+:root{
+  --bg:#F2F5F4; --surface:#FFFFFF; --sunk:#E8EEEC; --ink:#1C2829; --muted:#5B6B69; --line:#D6DFDC;
+  --in:#1D7566; --in-soft:#D5ECE6; --out:#B94B62; --out-soft:#F5DDE2; --warn:#9A6512; --warn-soft:#F6E8CF; --plus:#D2680A; --minus:#1C8CC9;
+  --p1:#8FB8D9; --p2:#6E9FC9; --p3:#1D7566; --p4:#7FB5A9; --p5:#C9D3D1;
+  --display:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111817; --surface:#18211F; --sunk:#1F2A28; --ink:#E4EDEB; --muted:#98AAA6; --line:#2B3735;
+  --in:#55C3AE; --in-soft:#1C3A34; --out:#E37C92; --out-soft:#3D2329; --warn:#E0AE5C; --warn-soft:#3A2E18; --plus:#F59E4C; --minus:#5EC3F2;
+  --p1:#4C7393; --p2:#3E6688; --p3:#3E9C89; --p4:#2F6A5E; --p5:#38443F; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111817; --surface:#18211F; --sunk:#1F2A28; --ink:#E4EDEB; --muted:#98AAA6; --line:#2B3735;
+  --in:#55C3AE; --in-soft:#1C3A34; --out:#E37C92; --out-soft:#3D2329; --warn:#E0AE5C; --warn-soft:#3A2E18; --plus:#F59E4C; --minus:#5EC3F2;
+  --p1:#4C7393; --p2:#3E6688; --p3:#3E9C89; --p4:#2F6A5E; --p5:#38443F; color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.65;padding-inline:16px;padding-block:24px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+header h1{font-family:var(--display);font-weight:700;font-size:clamp(24px,4vw,32px);margin:0;letter-spacing:.02em;text-wrap:balance}
+header p{margin:4px 0 0;color:var(--muted);max-width:64ch}
+.grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:minmax(0,1fr)}}
+form{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:18px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px)}
+@media (max-width:880px){form{position:static}}
+fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+legend{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.03em;color:var(--ink);padding:0 0 6px;margin-bottom:8px;width:100%;border-bottom:2px solid var(--in-soft);display:flex;align-items:center;gap:8px}
+legend::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--in);flex:none}
+form fieldset+fieldset{padding-top:6px}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted)}
+label.f span.hint{font-size:11.5px}
+input,select{font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%;font-variant-numeric:tabular-nums}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--in);outline-offset:1px}
+.yen{position:relative}.yen input{padding-right:28px;text-align:right}.yen.days::after{content:"日"}.yen::after{content:"円";position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:13.5px}.chk input{width:auto;margin-top:4px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{font:inherit;cursor:pointer;border-radius:6px}
+.btn-ghost{background:none;border:1px dashed var(--line);color:var(--in);padding:6px 10px;font-size:13px}
+.est{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:6px;background:var(--sunk)}
+.btn-calc{background:var(--in);color:var(--surface);border:0;padding:8px 12px;font-weight:700;font-size:14px}
+.btn-calc:hover{filter:brightness(1.08)}
+.extra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:8px;background:var(--bg);border-radius:6px}
+.extra .r{display:grid;grid-template-columns:118px minmax(0,1fr);gap:6px}
+.extra input{font-size:13.5px;padding:5px 7px;background:var(--surface)}
+.extra input.plus{color:var(--plus);font-weight:700}.extra input.minus{color:var(--minus);font-weight:700}
+.extra .del{background:none;border:0;color:var(--muted);font-size:18px;line-height:1;padding:0 4px;align-self:start}
+main{display:flex;flex-direction:column;gap:20px;min-width:0}
+section.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;min-width:0}
+h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;text-wrap:balance}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:8px;background:var(--sunk)}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.stat .s{font-size:12px;color:var(--muted)}
+.stat.bad{background:var(--out-soft)}.stat.bad .v{color:var(--out)}
+.alert{margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--warn-soft);color:var(--ink);font-size:13.5px}
+.alert b{color:var(--warn)}
+.phase{display:flex;height:34px;border-radius:6px;overflow:hidden;margin:4px 0 8px}
+.phase div{display:flex;align-items:center;justify-content:center;font-size:11.5px;color:#fff;white-space:nowrap;overflow:hidden;min-width:0}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.chart{width:100%;overflow-x:auto}
+.chart svg{display:block;width:100%;height:auto;min-width:560px}
+.chart text{font-family:var(--body);font-size:11px;fill:var(--muted)}
+.months{display:flex;flex-direction:column;gap:8px}
+.m{display:grid;grid-template-columns:86px minmax(0,1fr) 128px;gap:12px;padding:10px 12px;border-radius:8px;border:1px solid var(--line)}
+@media (max-width:560px){.m{grid-template-columns:minmax(0,1fr) auto}.m .items{grid-column:1/-1;grid-row:2}}
+.m.neg{border-color:var(--out);background:var(--out-soft)}
+.m .mo{font-weight:700;font-variant-numeric:tabular-nums}
+.m .mo small{display:block;font-weight:400;font-size:11.5px;color:var(--muted)}
+.items{display:flex;flex-direction:column;gap:2px;font-size:13.5px;min-width:0}
+.it{display:flex;justify-content:space-between;gap:10px}
+.it .l{min-width:0}
+.it .a{font-variant-numeric:tabular-nums;white-space:nowrap}
+.it.in .a{color:var(--in)}.it.out .a{color:var(--out)}
+.it.fixed{color:var(--muted);font-size:12.5px}
+.it.key .l{font-weight:700}
+.tag{display:inline-block;font-size:10.5px;padding:0 5px;border-radius:3px;background:var(--sunk);color:var(--muted);margin-left:4px;vertical-align:1px}
+.bal{text-align:right;font-variant-numeric:tabular-nums}
+.bal .n{font-size:12px;color:var(--muted)}
+.bal .b{font-weight:700;font-size:16px}
+.m.neg .bal .b{color:var(--out)}
+.hh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 10px;border-radius:6px;background:var(--in-soft);font-size:13px}
+.hh b{font-size:16px;font-variant-numeric:tabular-nums}
+.notes{font-size:13px;color:var(--muted)}
+.notes ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+.foot{font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>産休育休マネープラン</h1>
+  <p>出産予定日とお給料を入れると、産休・育休中に「いつ・いくら」入ってきて出ていくかを月ごとに並べます。給付金の上限額は2026年8月1日改定のものです。</p>
+</header>
+
+<div class="grid">
+<form id="f" autocomplete="off">
+  <fieldset>
+    <legend>出産と休業</legend>
+    <label class="f">出産予定日<input type="date" id="due"></label>
+    <label class="chk"><input type="checkbox" id="multi">多胎妊娠（産前休業が14週になります）</label>
+    <label class="f">育休の終わり
+      <select id="endMode">
+        <option value="1y">子が1歳になる前日まで</option>
+        <option value="1y6m">1歳6か月まで（保育園に入れない場合）</option>
+        <option value="2y">2歳まで（延長）</option>
+        <option value="custom">日付を指定する</option>
+      </select>
+    </label>
+    <label class="f" id="customWrap" hidden>復職前日（育休最終日）<input type="date" id="endCustom"></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>配偶者</legend>
+    <div class="row2">
+      <label class="f">月給（額面）<span class="yen"><input type="number" id="spSalary" inputmode="numeric" step="1000" min="0"></span></label>
+      <label class="f">月の手取り<span class="yen"><input type="number" id="spouse" inputmode="numeric" step="1000" min="0"></span></label>
+    </div>
+    <label class="f">給料日
+      <select id="spPayday"><option value="same">当月払い</option><option value="next">翌月払い</option></select>
+    </label>
+    <label class="chk"><input type="checkbox" id="spouseLeave">配偶者も育休を取る</label>
+    <div id="spWrap" style="display:flex;flex-direction:column;gap:10px">
+      <div class="row2">
+        <label class="f">開始（出産日から）<span class="yen days"><input type="number" id="spOffset" inputmode="numeric" step="1" min="0"></span></label>
+        <label class="f">育休の日数<span class="yen days"><input type="number" id="spDays" inputmode="numeric" step="1" min="1"></span></label>
+      </div>
+      <span class="foot" id="spInfo"></span>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>あなたのお給料</legend>
+    <label class="f">月給（額面・残業代など込みの平均）<span class="yen"><input type="number" id="salary" inputmode="numeric" step="1000" min="0"></span></label>
+    <label class="f">月の手取り<span class="yen"><input type="number" id="takehome" inputmode="numeric" step="1000" min="0"></span></label>
+    <label class="f">給料日
+      <select id="payday"><option value="same">当月払い（その月の分をその月に）</option><option value="next">翌月払い（前月の分を翌月に）</option></select>
+    </label>
+    <label class="f">今年度の住民税（年額）<span class="yen"><input type="number" id="resTax" inputmode="numeric" step="1000" min="0"></span><span class="hint">5月ごろにもらう「住民税決定通知書」に載っています</span></label>
+    <div class="est">
+      <label class="f">昨年の賞与（年間・額面）<span class="yen"><input type="number" id="bonus" inputmode="numeric" step="10000" min="0"></span></label>
+      <button type="button" class="btn-calc" id="calcTax">月給から住民税を計算</button>
+      <span class="foot" id="taxNote"></span>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>家計</legend>
+    <label class="f">毎月の生活費（家賃・食費など）<span class="yen"><input type="number" id="living" inputmode="numeric" step="1000" min="0"></span></label>
+    <div class="row2">
+      <label class="f">あなたの貯蓄<span class="yen"><input type="number" id="savings" inputmode="numeric" step="10000" min="0"></span></label>
+      <label class="f">配偶者の貯蓄<span class="yen"><input type="number" id="spSavings" inputmode="numeric" step="10000" min="0"></span></label>
+    </div>
+    <div class="hh"><span>世帯の貯蓄の合計</span><b id="hhTotal"></b></div>
+    <div class="row2">
+      <label class="f">出産費用の見込み<span class="yen"><input type="number" id="birthCost" inputmode="numeric" step="10000" min="0"></span></label>
+      <label class="f">何人目のお子さん<select id="order"><option value="1">1人目</option><option value="2">2人目</option><option value="3">3人目以降</option></select></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>そのほかの入出金</legend>
+    <div id="extras" style="display:flex;flex-direction:column;gap:6px"></div>
+    <button type="button" class="btn-ghost" id="addExtra">＋ 項目を追加</button>
+    <span class="foot">出金はマイナスで入力します（例：-80000）</span>
+  </fieldset>
+</form>
+
+<main>
+  <section class="card">
+    <h2>ひと目でわかる見通し</h2>
+    <div class="stats" id="stats"></div>
+    <div id="alerts"></div>
+  </section>
+
+  <section class="card">
+    <h2>休業のスケジュール</h2>
+    <div class="phase" id="phase"></div>
+    <div class="legend" id="phaseLegend"></div>
+  </section>
+
+  <section class="card">
+    <h2>世帯の貯蓄残高の推移</h2>
+    <div class="chart" id="balChart"></div>
+  </section>
+
+  <section class="card">
+    <h2>月ごとの入金と出金</h2>
+    <div class="chart" id="flowChart"></div>
+    <div class="legend" style="margin-top:6px"><span><i style="background:var(--in)"></i>入金</span><span><i style="background:var(--out)"></i>出金</span></div>
+  </section>
+
+  <section class="card">
+    <h2>月ごとの明細</h2>
+    <div class="months" id="months"></div>
+  </section>
+
+  <section class="card notes">
+    <h2>この計算の前提</h2>
+    <ul>
+      <li>出産手当金は「月給 ÷ 30 × 2/3」を日額とし、産前42日（多胎は98日）＋産後56日分を、産後休業が終わってから一括申請した想定です。産前分だけ先に申請すると早く受け取れます。</li>
+      <li>育児休業給付金は休業開始から180日まで67%、それ以降50%。賃金日額の上限16,540円・下限3,203円（2026年8月〜2027年7月）で計算しています。2か月ごとの申請で、2か月分がまとめて振り込まれる想定です。</li>
+      <li>産休・育休中は申出により健康保険料・厚生年金保険料が免除され、給付金は非課税です。</li>
+      <li>「月給から住民税を計算」は、昨年も今と同じ月給だったとして、社会保険料を年収の15%、基礎控除43万円、税率10%、均等割5,000円で概算します。お住まいの地域の上乗せ分や各種控除は反映されません。</li>
+      <li>住民税は前年の所得にかかるため、休業中も納付書で払います（6月・8月・10月・翌1月）。1〜5月に休業に入る場合は、5月分までを最後のお給料から一括で引かれるのが原則です。翌年度以降の額は働いた月数からの概算です。</li>
+      <li>配偶者の育休のうち、出産後8週以内の最大28日を産後パパ育休（出生時育児休業給付金67%）、残りを通常の育休として計算しています。休業中の配偶者の給与は日割りで減らし、社会保険料の免除による手取りの増加は含めていません。</li>
+      <li>出生後休業支援給付金（13%）は、配偶者が出産後8週以内に14日以上育休を取ると配偶者に、出産後16週以内に14日以上取るとあなたにもつく想定です。最大28日分です。</li>
+      <li>出産育児一時金（50万円）は病院への直接支払制度を使う想定です。費用が50万円を下回れば差額を後から受け取れます。出産費用の無償化（2026年6月公布の改正法）は施行日が未定のため反映していません。</li>
+      <li>児童手当は3歳未満で月15,000円（第3子以降30,000円）、出生の翌月分から、偶数月に前月までの2か月分が支給されます。</li>
+      <li>振込日はおおよその目安です。勤務先・ハローワーク・加入している健康保険の処理によって前後します。</li>
+    </ul>
+    <p class="foot" style="margin-top:12px">入力した内容はこのブラウザの中だけで計算され、どこにも送信されません。概算のシミュレーションのため、正確な金額は勤務先や社会保険労務士にご確認ください。</p>
+  </section>
+</main>
+</div>
+</div>
+
+<script>
+(function(){
+const LIMIT={dailyMax:16540,dailyMin:3203,lump:500000};
+const $=id=>document.getElementById(id);
+const D=(y,m,d)=>new Date(Date.UTC(y,m-1,d));
+const addDays=(t,n)=>new Date(t.getTime()+n*864e5);
+const dim=(y,m)=>new Date(Date.UTC(y,m,0)).getUTCDate();
+function addMonths(t,n){let y=t.getUTCFullYear(),m=t.getUTCMonth()+1+n;y+=Math.floor((m-1)/12);m=((m-1)%12+12)%12+1;return D(y,m,Math.min(t.getUTCDate(),dim(y,m)))}
+const key=t=>t.getUTCFullYear()+"-"+String(t.getUTCMonth()+1).padStart(2,"0");
+const keyAdd=(k,n)=>{let [y,m]=k.split("-").map(Number);return key(addMonths(D(y,m,1),n))};
+const md=t=>(t.getUTCMonth()+1)+"/"+t.getUTCDate();
+const ymd=t=>t.getUTCFullYear()+"年"+(t.getUTCMonth()+1)+"月"+t.getUTCDate()+"日";
+const parse=s=>{if(!s)return null;const [y,m,d]=s.split("-").map(Number);return D(y,m,d)};
+const yen=n=>(n<0?"−":"")+Math.abs(Math.round(n)).toLocaleString("ja-JP")+"円";
+const man=n=>{const v=Math.round(n/1000)/10;return (n<0?"−":"")+Math.abs(v).toLocaleString("ja-JP",{maximumFractionDigits:1})+"万"};
+const days=(a,b)=>Math.round((b-a)/864e5)+1;
+
+// 初期値（例）
+const today=new Date();const ex=addMonths(D(today.getFullYear(),today.getMonth()+1,15),5);
+const defaults={due:ex.toISOString().slice(0,10),multi:false,endMode:"1y",endCustom:"",spouseLeave:false,
+  salary:300000,takehome:235000,payday:"next",resTax:180000,spouse:280000,spSalary:360000,spPayday:"same",spOffset:0,spDays:28,living:330000,savings:1500000,spSavings:800000,bonus:0,birthCost:520000,order:"1",
+  extras:[{m:keyAdd(key(ex),-1),label:"ベビー用品（例）",amt:-100000},{m:keyAdd(key(ex),2),label:"妊婦のための支援給付・出生後分（例）",amt:50000}]};
+let state;
+try{state=JSON.parse(localStorage.getItem("leaveplan")||"null")}catch(e){state=null}
+state=Object.assign(JSON.parse(JSON.stringify(defaults)),state||{});
+
+const fields=["due","multi","endMode","endCustom","spouseLeave","salary","takehome","payday","resTax","bonus","spouse","spSalary","spPayday","spOffset","spDays","living","savings","spSavings","birthCost","order"];
+function loadForm(){fields.forEach(f=>{const el=$(f);if(el.type==="checkbox")el.checked=!!state[f];else el.value=state[f]??""});$("customWrap").hidden=state.endMode!=="custom";$("spWrap").hidden=!state.spouseLeave;renderExtras()}
+function readForm(){fields.forEach(f=>{const el=$(f);state[f]=el.type==="checkbox"?el.checked:(el.type==="number"?Number(el.value||0):el.value)});$("customWrap").hidden=state.endMode!=="custom";$("spWrap").hidden=!state.spouseLeave}
+function save(){try{localStorage.setItem("leaveplan",JSON.stringify(state))}catch(e){}}
+
+function renderExtras(){const box=$("extras");box.innerHTML="";state.extras.forEach((x,i)=>{
+  const d=document.createElement("div");d.className="extra";
+  d.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px;min-width:0"><div class="r"><input type="month" id="exm${i}" value="${x.m}" aria-label="月"><input type="text" id="exl${i}" value="${x.label.replace(/"/g,"&quot;")}" aria-label="内容" placeholder="内容"></div><div class="yen"><input type="number" id="exa${i}" class="${x.amt>0?"plus":x.amt<0?"minus":""}" value="${x.amt}" step="1000" aria-label="金額"></div></div><button type="button" class="del" aria-label="この項目を削除">×</button>`;
+  d.querySelector(`#exm${i}`).addEventListener("input",e=>{x.m=e.target.value;update()});
+  d.querySelector(`#exl${i}`).addEventListener("input",e=>{x.label=e.target.value;update()});
+  d.querySelector(`#exa${i}`).addEventListener("input",e=>{x.amt=Number(e.target.value||0);e.target.classList.toggle("plus",x.amt>0);e.target.classList.toggle("minus",x.amt<0);update()});
+  d.querySelector(".del").addEventListener("click",()=>{state.extras.splice(i,1);renderExtras();update()});
+  box.appendChild(d)})}
+// 住民税の概算（昨年の給与所得のみ・扶養なし・標準税率10%・均等割5,000円）
+function estResTax(monthly,bonus){
+  const inc=Math.max(0,monthly*12+bonus);
+  let kyu;
+  if(inc<=1900000)kyu=650000;else if(inc<=3600000)kyu=inc*0.3+80000;else if(inc<=6600000)kyu=inc*0.2+440000;else if(inc<=8500000)kyu=inc*0.1+1100000;else kyu=1950000;
+  const shotoku=Math.max(0,Math.floor(inc-kyu));
+  if(shotoku<=450000)return {inc,tax:0};
+  const shaho=Math.round(inc*0.15);
+  const kazei=Math.max(0,Math.floor((shotoku-shaho-430000)/1000)*1000);
+  const wari=Math.max(0,Math.floor((kazei*0.1-2500)/100)*100);
+  return {inc,tax:wari+5000}}
+$("calcTax").addEventListener("click",()=>{readForm();const r=estResTax(state.salary||0,state.bonus||0);
+  $("resTax").value=r.tax;update();
+  $("taxNote").textContent=`年収${(r.inc/10000).toLocaleString("ja-JP",{maximumFractionDigits:1})}万円（月給×12か月＋賞与）として計算した目安です。扶養家族、生命保険料、ふるさと納税などの控除は含みません。`});
+$("addExtra").addEventListener("click",()=>{const b=parse(state.due);state.extras.push({m:b?key(b):"",label:"",amt:0});renderExtras();update()});
+
+function compute(s){
+  const birth=parse(s.due);if(!birth)return null;
+  const pre=s.multi?98:42;
+  const leaveStart=addDays(birth,-(pre-1));
+  const postEnd=addDays(birth,56);
+  const ccStart=addDays(postEnd,1);
+  let ccEnd;
+  if(s.endMode==="1y")ccEnd=addDays(addMonths(birth,12),-1);
+  else if(s.endMode==="1y6m")ccEnd=addDays(addMonths(birth,18),-1);
+  else if(s.endMode==="2y")ccEnd=addDays(addMonths(birth,24),-1);
+  else ccEnd=parse(s.endCustom)||addDays(addMonths(birth,12),-1);
+  if(ccEnd<ccStart)ccEnd=ccStart;
+  const ret=addDays(ccEnd,1);
+  const ev=[];const push=(date,label,amt,cat,o={})=>ev.push(Object.assign({date,k:key(date),label,amt,cat},o));
+  const startK=key(leaveStart),endK=keyAdd(key(ret),2);
+  const inRange=k=>k>=startK&&k<=endK;
+
+  // 給与（休業前）
+  const lsDays=leaveStart.getUTCDate()-1, lsDim=dim(leaveStart.getUTCFullYear(),leaveStart.getUTCMonth()+1);
+  const lastPay=Math.round(s.takehome*lsDays/lsDim);
+  let lastPayDate;
+  if(s.payday==="same"){lastPayDate=D(leaveStart.getUTCFullYear(),leaveStart.getUTCMonth()+1,25);if(lastPay>0)push(lastPayDate,"最後のお給料（日割り）",lastPay,"own")}
+  else{const p0=D(leaveStart.getUTCFullYear(),leaveStart.getUTCMonth()+1,25);push(p0,"お給料（前月分）",s.takehome,"own");lastPayDate=addMonths(p0,1);if(lastPay>0)push(lastPayDate,"最後のお給料（日割り）",lastPay,"own");else lastPayDate=p0}
+
+  // 出産手当金
+  const shDaily=Math.round(Math.round(s.salary/30/10)*10*2/3);
+  const shDays=pre+56;const shTotal=shDaily*shDays;
+  push(addDays(postEnd,45),`出産手当金（${shDays}日分）`,shTotal,"public",{est:true,keyItem:true,note:`日額${shDaily.toLocaleString()}円`});
+
+  // 出産育児一時金
+  const diff=s.birthCost-LIMIT.lump;
+  if(diff>0)push(birth,"出産費用の支払い（一時金50万円との差額）",-diff,"out",{keyItem:true});
+  else if(diff<0)push(addMonths(birth,2),"出産育児一時金の差額",-diff,"public",{est:true});
+
+  // 育児休業給付金
+  const wageDaily=Math.min(Math.max(s.salary/30,LIMIT.dailyMin),LIMIT.dailyMax);
+  function periodsFor(st,en,wage,offset){const out=[];let i=0;
+    while(true){const ps=addMonths(st,i);if(ps>en)break;const nx=addMonths(st,i+1);let pe=addDays(nx,-1);let full=true;if(pe>en){pe=en;full=false}
+      const a=days(st,ps)+offset,b=days(st,pe)+offset;const act=b-a+1;const d67=Math.max(0,Math.min(b,180)-a+1);const r=(d67*0.67+(act-d67)*0.5)/act;
+      const paid=full?30:act;out.push({ps,pe,amt:Math.floor(wage*paid*r),r});i++;if(i>40)break}
+    return out}
+  function payPeriods(per,prefix,cat){let first=null;
+    for(let j=0;j<per.length;j+=2){const grp=per.slice(j,j+2);const amt=grp.reduce((t,p)=>t+p.amt,0);const pd=addDays(grp[grp.length-1].pe,25);if(!first)first=pd;
+      const rates=[...new Set(grp.map(p=>p.r>0.66?"67%":p.r<0.51?"50%":"67→50%"))].join("・");
+      push(pd,`${prefix}育児休業給付金（${md(grp[0].ps)}〜${md(grp[grp.length-1].pe)}分・${rates}）`,amt,cat,{est:true,keyItem:true})}
+    return first}
+  const overlap=(a1,a2,b1,b2)=>{const st=a1>b1?a1:b1,en=a2<b2?a2:b2;return en>=st?days(st,en):0};
+  const periods=periodsFor(ccStart,ccEnd,wageDaily,0);
+  const firstPay=payPeriods(periods,"","public");
+
+  // 配偶者の育休
+  let sp=null;
+  if(s.spouseLeave){
+    const hs=addDays(birth,Math.max(0,s.spOffset||0)),he=addDays(hs,Math.max(1,s.spDays||1)-1),w8=addDays(birth,56);
+    const hw=Math.min(Math.max((s.spSalary||0)/30,LIMIT.dailyMin),LIMIT.dailyMax);
+    let pEnd=null,pDays=0,firstSp=null;
+    if(hs<=w8){pEnd=new Date(Math.min(he,addDays(hs,27),w8));pDays=days(hs,pEnd);
+      firstSp=addDays(new Date(Math.max(addDays(w8,1),addDays(pEnd,1))),30);
+      push(firstSp,`配偶者：出生時育児休業給付金（${md(hs)}〜${md(pEnd)}・${pDays}日分・67%）`,Math.floor(hw*pDays*0.67),"sppub",{est:true,keyItem:true})}
+    const rs=pDays?addDays(pEnd,1):hs;let regDays=0;
+    if(rs<=he){regDays=days(rs,he);const f2=payPeriods(periodsFor(rs,he,hw,pDays),"配偶者：","sppub");if(!firstSp)firstSp=f2}
+    const in8=overlap(hs,he,birth,w8);let spShien=0;
+    if(in8>=14&&firstSp){spShien=Math.floor(Math.min((s.spSalary||0)/30,LIMIT.dailyMax)*Math.min(28,in8)*0.13);push(firstSp,`配偶者：出生後休業支援給付金（13%・${Math.min(28,in8)}日分）`,spShien,"sppub",{est:true,keyItem:true})}
+    sp={hs,he,pDays,regDays,in8,motherOK:overlap(hs,he,birth,addDays(birth,111))>=14}
+  }
+  let shien=0;
+  if(sp&&sp.motherOK&&firstPay){const d=Math.min(28,days(ccStart,ccEnd));shien=Math.floor(Math.min(s.salary/30,LIMIT.dailyMax)*d*0.13);push(firstPay,"出生後休業支援給付金（13%・28日分）",shien,"public",{est:true,keyItem:true})}
+
+  // 住民税
+  const mTax=s.resTax/12;const lsY=leaveStart.getUTCFullYear(),lsM=leaveStart.getUTCMonth()+1;
+  const retK=key(ret);
+  if(lsM<=5){const lump=Math.round(mTax*(5-lsM+1));push(lastPayDate,"住民税（5月分までを最後のお給料から一括）",-lump,"out",{keyItem:true})}
+  else{const remain=Math.round(mTax*(12-lsM+1+5));const dues=[D(lsY,8,31),D(lsY,10,31),D(lsY+1,1,31)].filter(d=>(d.getUTCMonth()+1)>lsM+1||d.getUTCFullYear()>lsY);
+    dues.forEach(d=>push(d,"住民税（納付書・今年度の残り）",-Math.round(remain/dues.length),"out",{keyItem:true}))}
+  // 以降の年度：前年に給与をもらった月数から概算
+  const firstFY=lsM<=5?lsY:lsY+1;
+  for(let fy=firstFY;fy<=firstFY+3;fy++){const cy=fy-1;let months=0;
+    for(let m=1;m<=12;m++){const t=D(cy,m,15);if(t<leaveStart||t>=ret)months++}
+    const tax=Math.round(s.resTax*months/12);if(tax<=0)continue;
+    [D(fy,6,30),D(fy,8,31),D(fy,10,31),D(fy+1,1,31)].forEach(d=>{if(key(d)<retK)push(d,`住民税（${fy}年度・${cy}年の所得分）`,-Math.round(tax/4),"out",{est:true,keyItem:true})})}
+
+  // 児童手当
+  const ja=s.order==="3"?30000:15000;const jaPay={};
+  for(let n=1;n<=40;n++){const mk=keyAdd(key(birth),n);let [y,m]=mk.split("-").map(Number);const pm=(m+1)%2===0?keyAdd(mk,1):keyAdd(mk,2);jaPay[pm]=(jaPay[pm]||0)+ja}
+  Object.entries(jaPay).forEach(([k,v])=>{const [y,m]=k.split("-").map(Number);push(D(y,m,15),"児童手当（2か月分）",v,"public")});
+
+  // 復職後の給与
+  const rDays=dim(ret.getUTCFullYear(),ret.getUTCMonth()+1)-ret.getUTCDate()+1,rDim=dim(ret.getUTCFullYear(),ret.getUTCMonth()+1);
+  const firstR=Math.round(s.takehome*rDays/rDim);
+  for(let n=0;n<=3;n++){const pd=addMonths(D(ret.getUTCFullYear(),ret.getUTCMonth()+1,25),n+(s.payday==="next"?1:0));push(pd,n===0?"復職後のお給料（日割り）":"お給料",n===0?firstR:s.takehome,"own")}
+
+  // 毎月の固定
+  let k=startK;const keys=[];while(k<=endK){keys.push(k);k=keyAdd(k,1)}
+  keys.forEach(kk=>{const [y,m]=kk.split("-").map(Number);
+    if(s.living)push(D(y,m,27),"生活費",-s.living,"out",{fixed:true})});
+  // 配偶者の給与（育休の日数分を日割りで差し引く）
+  if(s.spouse){for(let n=-1;n<keys.length;n++){const mk=keyAdd(startK,n);const [y,m]=mk.split("-").map(Number);const dm=dim(y,m);
+    const off=sp?overlap(sp.hs,sp.he,D(y,m,1),D(y,m,dm)):0;const amt=Math.round(s.spouse*(dm-off)/dm);
+    const pd=s.spPayday==="next"?addMonths(D(y,m,24),1):D(y,m,24);
+    if(amt>0)push(pd,off?`配偶者の手取り（育休${off}日分を除く）`:"配偶者の手取り",amt,"spouse",off?{keyItem:true,est:true}:{fixed:true})}}
+  // そのほか
+  s.extras.forEach(x=>{if(!x.m||!x.amt)return;const [y,m]=x.m.split("-").map(Number);push(D(y,m,20),x.label||"（名前なし）",x.amt,x.amt>0?"extra":"out",{keyItem:true})});
+
+  const list=ev.filter(e=>inRange(e.k)).sort((a,b)=>a.date-b.date);
+  const start=(s.savings||0)+(s.spSavings||0);let bal=start;const months=keys.map(kk=>{const items=list.filter(e=>e.k===kk);const inn=items.filter(e=>e.amt>0).reduce((t,e)=>t+e.amt,0);const out=items.filter(e=>e.amt<0).reduce((t,e)=>t+e.amt,0);bal+=inn+out;
+    const own=items.filter(e=>e.amt>0&&(e.cat==="own"||e.cat==="public")&&!/児童手当/.test(e.label)).reduce((t,e)=>t+e.amt,0);
+    return {k:kk,items,inn,out,net:inn+out,bal,own}});
+  return {birth,leaveStart,postEnd,ccStart,ccEnd,ret,shDaily,shTotal,periods,shien,months,list,
+    total67:addDays(ccStart,179),sp,start};
+}
+
+function phaseView(r){
+  const t0=r.leaveStart,t1=addDays(r.ret,60);const span=t1-t0;
+  const end67=r.total67<r.ccEnd?r.total67:r.ccEnd;
+  const segs=[["産前休業",t0,r.birth,"--p1"],["産後休業",addDays(r.birth,1),r.postEnd,"--p2"],["育休 67%",r.ccStart,end67,"--p3"]];
+  if(r.total67<r.ccEnd)segs.push(["育休 50%",addDays(r.total67,1),r.ccEnd,"--p4"]);
+  segs.push(["復職",r.ret,t1,"--p5"]);
+  $("phase").innerHTML=segs.map(([n,a,b,c])=>`<div style="flex:${Math.max(1,b-a)/span*100} 1 0;background:var(${c});${c==="--p5"?"color:var(--ink)":""}" title="${n}">${n}</div>`).join("");
+  $("phaseLegend").innerHTML=segs.map(([n,a,b,c])=>`<span><i style="background:var(${c})"></i>${n}　${ymd(a)}${n==="復職"?"〜":"〜"+md(b)}</span>`).join("");
+}
+
+function balChart(r){
+  const ms=r.months,W=760,H=230,L=58,R=14,T=14,B=30;
+  const vals=[r.start,...ms.map(m=>m.bal)];let mx=Math.max(...vals),mn=Math.min(0,...vals);
+  const step=niceStep((mx-mn)/4);mx=Math.ceil(mx/step)*step;mn=Math.floor(mn/step)*step;if(mx===mn)mx=mn+step;
+  const x=i=>L+(W-L-R)*i/(ms.length),y=v=>T+(H-T-B)*(mx-v)/(mx-mn);
+  let g="";for(let v=mn;v<=mx+1;v+=step){g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="${v===0?1.4:1}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${man(v)}</text>`}
+  const pts=vals.map((v,i)=>[x(i),y(v)]);
+  const path=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+","+p[1].toFixed(1)).join("");
+  const area=path+`L${pts[pts.length-1][0]},${y(Math.max(mn,0))}L${pts[0][0]},${y(Math.max(mn,0))}Z`;
+  let lab="";ms.forEach((m,i)=>{const [yy,mm]=m.k.split("-");if(i%2===0||ms.length<14)lab+=`<text x="${x(i+1)}" y="${H-8}" text-anchor="middle">${mm==="01"||i===0?yy.slice(2)+"/":""}${+mm}月</text>`});
+  const minI=vals.indexOf(Math.min(...vals));
+  const dots=pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="${i===minI?4.5:2.2}" fill="${vals[i]<0?"var(--out)":"var(--in)"}"/>`).join("");
+  $("balChart").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="世帯の貯蓄残高の推移">${g}<path d="${area}" fill="var(--in-soft)" opacity=".8"/><path d="${path}" fill="none" stroke="var(--in)" stroke-width="2.2"/>${dots}<text x="${pts[minI][0]}" y="${pts[minI][1]-9}" text-anchor="middle" style="fill:var(--ink);font-weight:700">最低 ${man(vals[minI])}円</text>${lab}</svg>`;
+}
+function flowChart(r){
+  const ms=r.months,W=760,H=240,L=58,R=14,T=12,B=30;
+  let mx=Math.max(...ms.map(m=>m.inn)),mn=Math.min(...ms.map(m=>m.out));const step=niceStep((mx-mn)/4);mx=Math.ceil(mx/step)*step;mn=Math.floor(mn/step)*step;
+  const bw=(W-L-R)/ms.length,y=v=>T+(H-T-B)*(mx-v)/(mx-mn);
+  let g="";for(let v=mn;v<=mx+1;v+=step)g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="${v===0?1.4:1}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${man(v)}</text>`;
+  let bars="",lab="";ms.forEach((m,i)=>{const x0=L+bw*i+bw*0.18,w=bw*0.64;
+    bars+=`<rect x="${x0}" y="${y(m.inn)}" width="${w}" height="${y(0)-y(m.inn)}" rx="2" fill="var(--in)"><title>${m.k} 入金 ${yen(m.inn)}</title></rect><rect x="${x0}" y="${y(0)}" width="${w}" height="${y(m.out)-y(0)}" rx="2" fill="var(--out)"><title>${m.k} 出金 ${yen(m.out)}</title></rect>`;
+    const [yy,mm]=m.k.split("-");if(i%2===0||ms.length<14)lab+=`<text x="${L+bw*(i+.5)}" y="${H-8}" text-anchor="middle">${mm==="01"||i===0?yy.slice(2)+"/":""}${+mm}月</text>`});
+  $("flowChart").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="月ごとの入金と出金">${g}${bars}${lab}</svg>`;
+}
+function niceStep(v){if(v<=0)return 100000;const p=Math.pow(10,Math.floor(Math.log10(v)));const f=v/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p}
+
+function render(r){
+  const ms=r.months;const minM=ms.reduce((a,b)=>b.bal<a.bal?b:a,ms[0]);
+  const tin=ms.reduce((t,m)=>t+m.inn,0),tout=ms.reduce((t,m)=>t+m.out,0);
+  const pub=r.list.filter(e=>e.cat==="public"||e.cat==="sppub").reduce((t,e)=>t+e.amt,0);
+  // 本人の収入がない最長期間
+  let best=[0,null,null,0],cur=0,cs=null,ci=0;ms.forEach((m,i)=>{if(m.own===0){if(!cur){cs=m.k;ci=i}cur++;if(cur>best[0])best=[cur,cs,m.k,ci]}else cur=0});
+  const lbl=k=>{const [y,m]=k.split("-");return `${+m}月`};
+  const fy=r.list.find(e=>/育児休業給付金/.test(e.label));
+  $("stats").innerHTML=`
+   <div class="stat"><span class="k">受け取れる給付金・手当</span><span class="v">${man(pub)}円</span><span class="s">出産手当金 ${man(r.shTotal)}円 ほか</span></div>
+   <div class="stat ${minM.bal<0?"bad":""}"><span class="k">世帯の貯蓄がいちばん減る月</span><span class="v">${man(minM.bal)}円</span><span class="s">${minM.k.replace("-","年")}月末</span></div>
+   <div class="stat"><span class="k">あなたの入金がない期間</span><span class="v">${best[0]}か月</span><span class="s">${best[1]?lbl(best[1])+"〜"+lbl(best[2]):"なし"}</span></div>
+   <div class="stat"><span class="k">育休給付金の初回振込</span><span class="v">${fy?(fy.date.getUTCMonth()+1)+"月ごろ":"—"}</span><span class="s">${fy?yen(fy.amt)+"（2か月分）":""}</span></div>`;
+  let al="";
+  if(minM.bal<0)al+=`<div class="alert"><b>世帯の貯蓄が足りなくなる見込みです。</b> ${minM.k.replace("-","年")}月に ${yen(minM.bal)} になります。出産手当金の産前分を先に申請する、生活費を見直す、などで調整できます。</div>`;
+  else if(best[0]>=2)al+=`<div class="alert"><b>${best[0]}か月間、あなた名義の入金がありません。</b> 給付金は後払いでまとめて振り込まれるため、こうした空白ができます。この期間の生活費 ${yen(r.months.slice(best[3],best[3]+best[0]).reduce((t,m)=>t-m.out,0))} 前後を手元に用意しておくと安心です。</div>`;
+  $("alerts").innerHTML=al;
+  phaseView(r);balChart(r);flowChart(r);
+  $("months").innerHTML=ms.map(m=>{const its=m.items.slice().sort((a,b)=>(a.fixed?1:0)-(b.fixed?1:0)||a.date-b.date);
+    return `<div class="m ${m.bal<0?"neg":""}"><div class="mo">${m.k.split("-")[0]}年${+m.k.split("-")[1]}月<small>収支 ${m.net>=0?"+":""}${man(m.net)}円</small></div>
+    <div class="items">${its.map(e=>`<div class="it ${e.amt>0?"in":"out"} ${e.fixed?"fixed":""} ${e.keyItem?"key":""}"><span class="l">${esc(e.label)}${e.est?'<span class="tag">目安</span>':""}</span><span class="a">${e.amt>0?"+":""}${yen(e.amt)}</span></div>`).join("")}</div>
+    <div class="bal"><div class="n">月末の世帯残高</div><div class="b">${yen(m.bal)}</div></div></div>`}).join("");
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function update(){readForm();save();$("hhTotal").textContent=yen((state.savings||0)+(state.spSavings||0));const r=compute(state);if(!r)return;render(r);
+  if(r.sp){const p=r.sp;let t=`${ymd(p.hs)}〜${md(p.he)}。`;if(p.pDays)t+=`うち${p.pDays}日は産後パパ育休（出生時育児休業）。`;
+    t+=p.in8>=14?"出産後8週以内に14日以上取るので、配偶者に13%上乗せ。":"出産後8週以内の育休が14日未満のため、配偶者の13%上乗せはありません。";
+    t+=p.motherOK?"あなたにも13%上乗せがつきます。":"この日程だと、あなたの13%上乗せはつきません。";$("spInfo").textContent=t}}
+loadForm();
+$("f").addEventListener("input",e=>{if(!e.target.id.startsWith("ex"))update()});
+$("f").addEventListener("change",e=>{if(!e.target.id.startsWith("ex"))update()});
+$("f").addEventListener("submit",e=>e.preventDefault());
+update();
+window.__compute=compute;
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})})}
+})();
+</script>
+</body>
+</html>
