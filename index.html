@@ -159,6 +159,13 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
       </select>
     </label>
     <label class="f" id="customWrap" hidden>復職前日（育休最終日）<input type="date" id="endCustom"></label>
+    <div class="row2">
+      <label class="f">有給の残り日数<span class="yen days"><input type="number" id="paidDays" inputmode="numeric" step="1" min="0"></span></label>
+      <label class="f">有給の使い方
+        <select id="paidMode"><option value="before">産休の前にまとめて使う</option><option value="instead">産前休業の代わりに使う</option></select>
+      </label>
+    </div>
+    <span class="foot" id="paidHint">土日休み・週5日勤務として、祝日を除かずに数えています。</span>
     <div class="period" id="periodBox" aria-live="polite"></div>
   </fieldset>
 
@@ -260,6 +267,7 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
   <section class="card notes">
     <h2>この計算の前提</h2>
     <ul>
+      <li>有給は土日休みの週5日勤務として数えています。「産休の前にまとめて使う」は最終出勤日が早まるだけでお金は変わりません。「産前休業の代わりに使う」は、その日数分お給料が満額出て、出産手当金はその分減ります（出産手当金は給与が出ない日だけが対象のため）。</li>
       <li>出産手当金は「月給 ÷ 30 × 2/3」を日額とし、産前42日（多胎は98日）＋産後56日分を、産後休業が終わってから一括申請した想定です。産前分だけ先に申請すると早く受け取れます。</li>
       <li>育児休業給付金は休業開始から180日まで67%、それ以降50%。賃金日額の上限16,540円・下限3,203円（2026年8月〜2027年7月）で計算しています。2か月ごとの申請で、2か月分がまとめて振り込まれる想定です。</li>
       <li>産休・育休中は申出により健康保険料・厚生年金保険料が免除され、給付金は非課税です。</li>
@@ -273,7 +281,7 @@ h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 12px;tex
       <li>「夫婦で共有するリンク」には入力内容がそのまま入っています。リンクを受け取った人は中身を見られるので、送り先に気をつけてください。リンクの内容はサーバーには保存されません。</li>
       <li>振込日はおおよその目安です。勤務先・ハローワーク・加入している健康保険の処理によって前後します。</li>
     </ul>
-    <p class="foot" style="margin-top:12px">アプリのバージョン：<span id="appVer">2026.10.05-5</span></p>
+    <p class="foot" style="margin-top:12px">アプリのバージョン：<span id="appVer">2026.10.05-6</span></p>
     <p class="foot" style="margin-top:12px">入力した内容はこのブラウザの中だけで計算され、どこにも送信されません。概算のシミュレーションのため、正確な金額は勤務先や社会保険労務士にご確認ください。</p>
   </section>
 </main>
@@ -300,13 +308,13 @@ const days=(a,b)=>Math.round((b-a)/864e5)+1;
 // 初期値（例）
 const today=new Date();const ex=addMonths(D(today.getFullYear(),today.getMonth()+1,15),5);
 const defaults={due:ex.toISOString().slice(0,10),multi:false,endMode:"1y",endCustom:"",spouseLeave:false,
-  salary:300000,takehome:235000,payday:"next",resTax:180000,spouse:280000,spSalary:360000,spPayday:"same",spOffset:0,spDays:28,living:330000,savings:1500000,spSavings:800000,bonus:0,autoTake:false,age40:false,spAutoTake:false,spAge40:false,birthCost:520000,order:"1",
+  salary:300000,takehome:235000,payday:"next",resTax:180000,spouse:280000,spSalary:360000,spPayday:"same",spOffset:0,spDays:28,living:330000,savings:1500000,spSavings:800000,bonus:0,paidDays:0,paidMode:"before",autoTake:false,age40:false,spAutoTake:false,spAge40:false,birthCost:520000,order:"1",
   extras:[{m:keyAdd(key(ex),-1),label:"ベビー用品（例）",amt:-100000},{m:keyAdd(key(ex),2),label:"妊婦のための支援給付・出生後分（例）",amt:50000}]};
 let state;
 try{state=JSON.parse(localStorage.getItem("leaveplan")||"null")}catch(e){state=null}
 state=Object.assign(JSON.parse(JSON.stringify(defaults)),state||{});
 
-const fields=["due","multi","endMode","endCustom","spouseLeave","salary","takehome","payday","resTax","bonus","autoTake","age40","spAutoTake","spAge40","spouse","spSalary","spPayday","spOffset","spDays","living","savings","spSavings","birthCost","order"];
+const fields=["due","multi","paidDays","paidMode","endMode","endCustom","spouseLeave","salary","takehome","payday","resTax","bonus","autoTake","age40","spAutoTake","spAge40","spouse","spSalary","spPayday","spOffset","spDays","living","savings","spSavings","birthCost","order"];
 // 金額に3けたごとのコンマを付ける
 const toNum=v=>{const t=String(v).replace(/[，,\s円]/g,"").replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248)).replace(/[−ー－]/g,"-");const n=parseInt(t.replace(/(?!^)-/g,"").replace(/[^\d-]/g,""),10);return isNaN(n)?0:n};
 const comma=n=>{n=Number(n)||0;return n===0?"0":n.toLocaleString("ja-JP")};
@@ -373,7 +381,16 @@ $("addExtra").addEventListener("click",()=>{const b=parse(state.due);state.extra
 function compute(s){
   const birth=parse(s.due);if(!birth)return null;
   const pre=s.multi?98:42;
-  const leaveStart=addDays(birth,-(pre-1));
+  const legalStart=addDays(birth,-(pre-1));
+  // 有給：土日を除いた日数で数える
+  const isWork=t=>{const w=t.getUTCDay();return w!==0&&w!==6};
+  const nPaid=Math.max(0,Math.floor(s.paidDays||0));
+  let leaveStart=legalStart,paidStart=null,paidEnd=null,paidUsed=0;
+  if(nPaid>0&&s.paidMode==="instead"){let t=legalStart;while(paidUsed<nPaid&&t<birth){if(isWork(t)){paidUsed++;paidEnd=t}t=addDays(t,1)}
+    if(paidUsed){paidStart=legalStart;leaveStart=addDays(paidEnd,1)}}
+  else if(nPaid>0){let t=addDays(legalStart,-1);while(paidUsed<nPaid){if(isWork(t)){paidUsed++;paidStart=t}t=addDays(t,-1)}
+    paidEnd=addDays(legalStart,-1)}
+  let lastWork=addDays(paidStart||leaveStart,-1);while(!isWork(lastWork))lastWork=addDays(lastWork,-1);
   const postEnd=addDays(birth,56);
   const ccStart=addDays(postEnd,1);
   let ccEnd;
@@ -396,7 +413,7 @@ function compute(s){
 
   // 出産手当金
   const shDaily=Math.round(Math.round(s.salary/30/10)*10*2/3);
-  const shDays=pre+56;const shTotal=shDaily*shDays;
+  const shDays=days(leaveStart,birth)+56;const shTotal=shDaily*shDays;
   push(addDays(postEnd,45),`出産手当金（${shDays}日分）`,shTotal,"public",{est:true,keyItem:true,note:`日額${shDaily.toLocaleString()}円`});
 
   // 出産育児一時金
@@ -477,14 +494,15 @@ function compute(s){
   const start=(s.savings||0)+(s.spSavings||0);let bal=start;const months=keys.map(kk=>{const items=list.filter(e=>e.k===kk);const inn=items.filter(e=>e.amt>0).reduce((t,e)=>t+e.amt,0);const out=items.filter(e=>e.amt<0).reduce((t,e)=>t+e.amt,0);bal+=inn+out;
     const own=items.filter(e=>e.amt>0&&(e.cat==="own"||e.cat==="public")&&!/児童手当/.test(e.label)).reduce((t,e)=>t+e.amt,0);
     return {k:kk,items,inn,out,net:inn+out,bal,own}});
-  return {birth,leaveStart,postEnd,ccStart,ccEnd,ret,shDaily,shTotal,periods,shien,months,list,
+  return {birth,leaveStart,legalStart,paidStart,paidEnd,paidUsed,lastWork,postEnd,ccStart,ccEnd,ret,shDaily,shTotal,periods,shien,months,list,
     total67:addDays(ccStart,179),sp,start};
 }
 
 function phaseView(r){
-  const t0=r.leaveStart,t1=addDays(r.ret,60);const span=t1-t0;
+  const t0=r.paidStart||r.leaveStart,t1=addDays(r.ret,60);const span=t1-t0;
   const end67=r.total67<r.ccEnd?r.total67:r.ccEnd;
-  const segs=[["産前休業",t0,r.birth,"--p1"],["産後休業",addDays(r.birth,1),r.postEnd,"--p2"],["育休 67%",r.ccStart,end67,"--p3"]];
+  const segs=[];if(r.paidStart)segs.push(["有給",r.paidStart,r.paidEnd,"--warn"]);
+  if(r.leaveStart<=r.birth)segs.push(["産前休業",r.leaveStart,r.birth,"--p1"]);segs.push(["産後休業",addDays(r.birth,1),r.postEnd,"--p2"],["育休 67%",r.ccStart,end67,"--p3"]);
   if(r.total67<r.ccEnd)segs.push(["育休 50%",addDays(r.total67,1),r.ccEnd,"--p4"]);
   segs.push(["復職",r.ret,t1,"--p5"]);
   $("phase").innerHTML=segs.map(([n,a,b,c])=>`<div style="flex:${Math.max(1,b-a)/span*100} 1 0;background:var(${c});${c==="--p5"?"color:var(--ink)":""}" title="${n}">${n}</div>`).join("");
@@ -544,8 +562,10 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 
 function update(){readForm();applyAuto();save();$("hhTotal").textContent=yen((state.savings||0)+(state.spSavings||0));const r=compute(state);if(!r)return;render(r);
   const wd=t=>"日月火水木金土"[t.getUTCDay()];const fd=t=>`${t.getUTCFullYear()}年${t.getUTCMonth()+1}月${t.getUTCDate()}日（${wd(t)}）`;
-  $("periodBox").innerHTML=`<span class="k">産休</span><span>${fd(r.leaveStart)} 〜 ${fd(r.postEnd)}</span>
-   <span class="sub">産前 ${days(r.leaveStart,r.birth)}日・産後 ${days(addDays(r.birth,1),r.postEnd)}日（出産日は予定日として計算）</span>
+  const paidRow=r.paidStart?`<span class="k">有給</span><span>${fd(r.paidStart)} 〜 ${fd(r.paidEnd)}</span>
+   <span class="sub">${r.paidUsed}日分を使用（この間はお給料が満額出ます）${state.paidMode==="instead"&&r.paidUsed<(state.paidDays||0)?`。産前の期間に使えるのは${r.paidUsed}日までです`:""}</span>`:"";
+  $("periodBox").innerHTML=`<span class="k">最終出勤</span><span>${fd(r.lastWork)}</span>${paidRow}<span class="k">産休</span><span>${fd(r.leaveStart)} 〜 ${fd(r.postEnd)}</span>
+   <span class="sub">産前 ${Math.max(0,days(r.leaveStart,r.birth))}日・産後 ${days(addDays(r.birth,1),r.postEnd)}日（出産日は予定日として計算）</span>
    <span class="k">育休</span><span>${fd(r.ccStart)} 〜 ${fd(r.ccEnd)}</span>
    <span class="sub">${days(r.ccStart,r.ccEnd)}日間</span>
    <span class="k">復職</span><span>${fd(r.ret)}</span>`;
