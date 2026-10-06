@@ -1,8 +1,8 @@
 // みらい手帳:電波がなくても開けるようにするための仕組み
 // アプリを更新したら、下の VERSION の数字を1つ上げてください。
-const VERSION = "v5";
+const VERSION = "v6";
 const CACHE = "mirai-techo-" + VERSION;
-const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
+const CORE = ["./", "./index.html", "./firebase-config.js", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));

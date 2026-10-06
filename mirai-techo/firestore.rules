@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    // 共有グループ(最大2人)
+    match /households/{hid} {
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+      allow create: if signedIn() && request.resource.data.members == [request.auth.uid];
+      allow update: if signedIn() && (
+        request.auth.uid in resource.data.members ||
+        (resource.data.members.size() < 2 &&
+         request.resource.data.members == resource.data.members.concat([request.auth.uid]) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']))
+      );
+      match /{doc=**} {
+        allow read, write: if signedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.members;
+      }
+    }
+
+    // 自分だけのデータ
+    match /users/{uid}/{doc=**} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}

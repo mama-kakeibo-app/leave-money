@@ -158,6 +158,16 @@ button.month[aria-expanded=true] .caret{transform:rotate(180deg)}
 @keyframes sr{from{transform:translateX(-30px);opacity:.3}to{transform:none;opacity:1}}
 .swipehint{display:none;text-align:center;font-size:.68rem;color:var(--muted);padding:2px 0 6px}
 @media (hover:none){.swipehint{display:block}}
+.shform{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.shform input{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--paper);min-width:0}
+.shform input:focus{border-color:var(--ai);outline:none;background:var(--sheet)}
+.codebox{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0 8px}
+.codebox code{font-family:var(--f-num);font-size:1.1rem;font-weight:600;letter-spacing:.08em;background:var(--paper);border-radius:10px;padding:6px 12px;user-select:all;-webkit-user-select:all}
+.live{display:inline-block;font-size:.68rem;font-weight:700;color:var(--sheet);background:var(--c1);border-radius:999px;padding:1px 8px;margin-right:4px}
+.who{font-size:.66rem;color:var(--muted);background:var(--paper);border-radius:999px;padding:0 6px}
+ul.list li .who{background:var(--sheet)}
+.shtoggle{border:1.5px solid var(--c1);color:var(--c1);background:none;border-radius:999px;font-size:.72rem;padding:3px 10px;font-weight:700}
+.shtoggle.priv{border-color:var(--line);color:var(--muted);font-weight:500}
 .top{display:flex;align-items:center;gap:3px;align-self:flex-start}
 .shime{font-family:var(--f-display);font-weight:700;font-size:.7rem;color:var(--sheet);background:var(--warn);border-radius:4px;padding:0 3px;line-height:1.4}
 .duein{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted);flex-wrap:wrap}
@@ -357,6 +367,39 @@ textarea.res:focus{border-color:var(--stamp)}
         <ul class="list up rec" id="rlist"></ul>
       </section>
 
+      <section class="panel" id="sharePanel">
+        <p class="label">夫婦で共有</p>
+        <div id="shOff"><p class="sub">共有の準備がまだできていません(初期設定が必要です)。</p></div>
+        <form id="shLogin" hidden>
+          <p class="sub" id="shLoginLead">ログインすると、夫婦で同じTODOを見たり書き込んだりできます。</p>
+          <div class="shform">
+            <input type="text" id="shName" placeholder="表示名(例:なお)" maxlength="12" autocomplete="nickname" hidden>
+            <input type="email" id="shEmail" placeholder="メールアドレス" autocomplete="email">
+            <input type="password" id="shPass" placeholder="パスワード(6文字以上)" autocomplete="current-password">
+          </div>
+          <div class="row bk">
+            <button class="btn primary" type="submit" id="shGo">ログイン</button>
+            <button class="btn" type="button" id="shSwitch">はじめての方(新規登録)</button>
+          </div>
+        </form>
+        <div id="shNoGroup" hidden>
+          <p class="sub"><b id="shMe1"></b> でログイン中。夫婦どちらか1人が「共有グループを作る」を押し、表示された招待コードをもう1人が入力します。</p>
+          <div class="row bk"><button class="btn primary" type="button" id="shCreate">共有グループを作る</button></div>
+          <div class="shform" style="margin-top:10px">
+            <input type="text" id="shCode" placeholder="招待コードを入力" autocomplete="off" autocapitalize="off">
+          </div>
+          <div class="row bk"><button class="btn" type="button" id="shJoin">招待コードで参加</button><button class="icon" type="button" id="shOut1">ログアウト</button></div>
+        </div>
+        <div id="shOn" hidden>
+          <p class="sub"><span class="live">共有中</span> <b id="shMe2"></b> でログイン中 · メンバー <b id="shCount"></b>人</p>
+          <p class="hint">招待コード(相手に送ってください)</p>
+          <div class="codebox"><code id="shCodeOut"></code><button class="btn" type="button" id="shCopy">コピー</button></div>
+          <p class="hint">「自分だけ」に設定した分類のTODOは、相手には見えません。設定は「＋ タブを編集」から変えられます。</p>
+          <div class="row bk"><button class="icon" type="button" id="shOut2">ログアウト</button></div>
+        </div>
+        <p class="hint" id="shMsg" role="status"></p>
+      </section>
+
       <section class="panel">
         <p class="label">データの保存</p>
         <p class="sub" id="status"></p>
@@ -383,6 +426,10 @@ textarea.res:focus{border-color:var(--stamp)}
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
 <script>
 (function(){
 const COLORS=["c1","c2","c3","c4","c5","c6","c7","c8"];
@@ -419,37 +466,144 @@ function dueBadge(it){
   return el("span","duepill","〆 "+(d.getMonth()+1)+"/"+d.getDate());
 }
 
-/* ---- 保存先:この端末の中だけ ---- */
+/* ---- 保存先:ログイン前はこの端末、共有中はクラウド ---- */
 const LS="mirai-techo-todos", LSC="mirai-techo-cats";
 const load=(k,f)=>{try{const v=JSON.parse(localStorage.getItem(k));return v||f}catch(e){return f}};
 let storageOK=true;
-const saveLocal=()=>{try{localStorage.setItem(LS,JSON.stringify(items));localStorage.setItem(LSC,JSON.stringify(cats));storageOK=true}catch(e){storageOK=false}
+const saveLocal=()=>{
+  if(cloud)return;
+  try{localStorage.setItem(LS,JSON.stringify(items));localStorage.setItem(LSC,JSON.stringify(cats));storageOK=true}catch(e){storageOK=false}
   const t=new Date();setStatus(storageOK?"この端末に自動保存しました("+t.getHours()+":"+pad(t.getMinutes())+")":"この画面では保存できません。ホーム画面やブラウザから開き直してください")};
 items=load(LS,[]); cats=load(LSC,cats);
-const col=null, catDoc=null;
 setStatus("データはこの端末の中だけに自動保存されます");
 function setStatus(t){$("status").textContent=t}
-function showErr(e){setStatus(e&&e.code==="quota_exceeded"?"保存できる件数の上限です。古いTODOを削除してください":"保存に失敗しました。もう一度お試しください")}
+function showErr(e){setStatus("保存に失敗しました。電波の良いところで開き直してください")}
+const newId=()=>"t"+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const strip=it=>{const o=Object.assign({},it);delete o.id;return o};
+
+/* クラウド(Firebase) */
+let cloud=null; // {db,uid,hid,name}
+const isSharedCat=tag=>{const c=cat(tag);return !c||c.shared!==false};
+const colFor=tag=>isSharedCat(tag)?cloud.db.collection("households/"+cloud.hid+"/todos"):cloud.db.collection("users/"+cloud.uid+"/todos");
 
 async function addItem(o){
-  if(col){try{await col.add(o);return}catch(e){showErr(e)}}
-  items.push(Object.assign({id:"l"+Date.now()+Math.random().toString(36).slice(2,6)},o));saveLocal();render();
+  const it=Object.assign({id:newId()},o);
+  if(cloud){if(cloud.name)it.by=cloud.name;colFor(it.tag).doc(it.id).set(strip(it)).catch(showErr);return}
+  items.push(it);saveLocal();render();
 }
 async function patch(it,p){
-  Object.assign(it,p);
-  if(col){try{await col.doc(it.id).update(p);return}catch(e){showErr(e)}}
+  const oldTag=it.tag;Object.assign(it,p);
+  if(cloud){
+    if(p.done&&cloud.name)it.doneBy=p.doneBy=cloud.name;
+    if("tag" in p&&isSharedCat(oldTag)!==isSharedCat(p.tag)){
+      colFor(oldTag).doc(it.id).delete().catch(showErr);colFor(it.tag).doc(it.id).set(strip(it)).catch(showErr);
+    }else colFor(it.tag).doc(it.id).set(strip(it),{merge:true}).catch(showErr);
+    render();return;
+  }
   saveLocal();render();
 }
 async function removeItem(it){
   items=items.filter(x=>x!==it);
-  if(col){try{await col.doc(it.id).delete();return}catch(e){showErr(e)}}
+  if(cloud){colFor(it.tag).doc(it.id).delete().catch(showErr);render();return}
   saveLocal();render();
 }
-let catSaving=Promise.resolve();
 function saveCats(){
   render();renderMgr();saveLocal();
-  if(catDoc){const body={list:cats.map(c=>({id:c.id,name:c.name,color:c.color}))};
-    catSaving=catSaving.then(()=>catDoc.set(body)).catch(showErr);}
+  if(cloud)cloud.db.doc("households/"+cloud.hid+"/meta/categories").set({list:cats.map(c=>({id:c.id,name:c.name,color:c.color,shared:c.shared!==false}))}).catch(showErr);
+}
+/* 分類の「共有/自分だけ」を切り替えたら、その分類のTODOを移す */
+function moveCatItems(c,wasShared){
+  if(!cloud)return;
+  const from=wasShared?cloud.db.collection("households/"+cloud.hid+"/todos"):cloud.db.collection("users/"+cloud.uid+"/todos");
+  const to=colFor(c.id);
+  items.filter(i=>i.tag===c.id).forEach(i=>{from.doc(i.id).delete().catch(()=>{});to.doc(i.id).set(strip(i)).catch(showErr)});
+}
+
+const FB=window.FIREBASE_CONFIG&&window.firebase?window.FIREBASE_CONFIG:null;
+let fbAuth=null,fbDb=null,unsubs=[];
+const shMsg=t=>{$("shMsg").textContent=t||""};
+const show=id=>["shOff","shLogin","shNoGroup","shOn"].forEach(x=>{$(x).hidden=x!==id});
+const errJa=e=>{const c=(e&&e.code)||"";
+  if(/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c))return "メールアドレスかパスワードが違います。";
+  if(/email-already-in-use/.test(c))return "このメールアドレスはすでに登録されています。「ログイン」から入ってください。";
+  if(/weak-password/.test(c))return "パスワードは6文字以上にしてください。";
+  if(/invalid-email/.test(c))return "メールアドレスの形が正しくありません。";
+  if(/network/.test(c))return "電波の良いところでもう一度お試しください。";
+  if(/permission-denied/.test(c))return "この招待コードでは参加できません。コードが正しいか、すでに2人参加していないか確認してください。";
+  return "うまくいきませんでした。もう一度お試しください。("+c+")"};
+let signup=false;
+function stopCloud(){unsubs.forEach(u=>u());unsubs=[];cloud=null;items=load(LS,[]);cats=load(LSC,DEFAULT_CATS.slice());setStatus("データはこの端末の中だけに自動保存されます");render()}
+function startCloud(uid,hid,name){
+  unsubs.forEach(u=>u());unsubs=[];
+  cloud={db:fbDb,uid,hid,name};
+  let shared=[],priv=[];
+  const merge=()=>{items=shared.concat(priv);setStatus("夫婦で共有中(自動で同期されます)");render();renderMgr()};
+  unsubs.push(fbDb.collection("households/"+hid+"/todos").onSnapshot(q=>{shared=q.docs.map(d=>Object.assign({id:d.id},d.data()));merge()},e=>shMsg(errJa(e))));
+  unsubs.push(fbDb.collection("users/"+uid+"/todos").onSnapshot(q=>{priv=q.docs.map(d=>Object.assign({id:d.id},d.data()));merge()},()=>{}));
+  unsubs.push(fbDb.doc("households/"+hid+"/meta/categories").onSnapshot(d=>{if(d.exists&&Array.isArray(d.data().list)){cats=d.data().list.map(c=>Object.assign({},c));render();renderMgr()}},()=>{}));
+  unsubs.push(fbDb.doc("households/"+hid).onSnapshot(d=>{if(d.exists)$("shCount").textContent=String((d.data().members||[]).length)},()=>{}));
+  $("shCodeOut").textContent=hid;$("shMe2").textContent=name||"";show("shOn");
+}
+/* この端末にあったTODOを共有グループへ移す */
+async function uploadLocal(uid,hid,name,overwriteCats){
+  const localItems=load(LS,[]),localCats=load(LSC,cats);
+  const catSnap=await fbDb.doc("households/"+hid+"/meta/categories").get();
+  let useCats=localCats;
+  if(catSnap.exists&&!overwriteCats){useCats=catSnap.data().list;const ids=new Set(useCats.map(c=>c.id));localCats.forEach(c=>{if(!ids.has(c.id))useCats.push(c)})}
+  await fbDb.doc("households/"+hid+"/meta/categories").set({list:useCats.map(c=>({id:c.id,name:c.name,color:c.color,shared:c.shared!==false}))});
+  const sh=t=>{const c=useCats.find(x=>x.id===t);return !c||c.shared!==false};
+  for(let i=0;i<localItems.length;i+=400){const batch=fbDb.batch();
+    localItems.slice(i,i+400).forEach(it=>{const ref=sh(it.tag)?fbDb.doc("households/"+hid+"/todos/"+it.id):fbDb.doc("users/"+uid+"/todos/"+it.id);batch.set(ref,Object.assign(strip(it),it.by?{}:{by:name||""}))});
+    await batch.commit()}
+}
+if(FB){
+  try{
+    firebase.initializeApp(FB);fbAuth=firebase.auth();fbDb=firebase.firestore();
+    fbDb.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  }catch(e){fbAuth=null}
+}
+if(!fbAuth)show("shOff");
+else{
+  show("shLogin");
+  fbAuth.onAuthStateChanged(async u=>{
+    shMsg("");
+    if(!u){stopCloud();show("shLogin");return}
+    try{
+      const pr=await fbDb.doc("users/"+u.uid+"/meta/profile").get();
+      const p=pr.exists?pr.data():{};const name=p.name||u.displayName||"";
+      $("shMe1").textContent=name||u.email;
+      if(p.hid)startCloud(u.uid,p.hid,name);else show("shNoGroup");
+    }catch(e){shMsg(errJa(e));show("shNoGroup")}
+  });
+  $("shSwitch").onclick=()=>{signup=!signup;$("shName").hidden=!signup;$("shGo").textContent=signup?"登録する":"ログイン";$("shSwitch").textContent=signup?"登録済みの方(ログイン)":"はじめての方(新規登録)";$("shPass").autocomplete=signup?"new-password":"current-password";shMsg("")};
+  $("shLogin").addEventListener("submit",async e=>{e.preventDefault();
+    const em=$("shEmail").value.trim(),pw=$("shPass").value,nm=$("shName").value.trim();
+    if(signup&&!nm){shMsg("表示名を入れてください(相手の画面に「◯◯が完了」と出ます)。");return}
+    shMsg(signup?"登録しています…":"ログインしています…");
+    try{
+      if(signup){const c=await fbAuth.createUserWithEmailAndPassword(em,pw);await c.user.updateProfile({displayName:nm});await fbDb.doc("users/"+c.user.uid+"/meta/profile").set({name:nm},{merge:true});$("shMe1").textContent=nm}
+      else await fbAuth.signInWithEmailAndPassword(em,pw);
+      $("shPass").value="";
+    }catch(err){shMsg(errJa(err))}
+  });
+  $("shCreate").onclick=async()=>{const u=fbAuth.currentUser;if(!u)return;shMsg("作成しています…");
+    try{const a="abcdefghjkmnpqrstuvwxyz23456789";let hid="";const rnd=crypto.getRandomValues(new Uint8Array(12));rnd.forEach(x=>hid+=a[x%a.length]);
+      await fbDb.doc("households/"+hid).set({members:[u.uid],createdAt:Date.now()});
+      const name=$("shMe1").textContent;
+      await fbDb.doc("users/"+u.uid+"/meta/profile").set({hid,name},{merge:true});
+      await uploadLocal(u.uid,hid,name,true);
+      shMsg("共有グループを作りました。招待コードを相手に送ってください。");startCloud(u.uid,hid,name);
+    }catch(e){shMsg(errJa(e))}};
+  $("shJoin").onclick=async()=>{const u=fbAuth.currentUser;const hid=$("shCode").value.trim().toLowerCase();if(!u||!hid)return;shMsg("参加しています…");
+    try{
+      await fbDb.doc("households/"+hid).update({members:firebase.firestore.FieldValue.arrayUnion(u.uid)});
+      const name=$("shMe1").textContent;
+      await fbDb.doc("users/"+u.uid+"/meta/profile").set({hid,name},{merge:true});
+      await uploadLocal(u.uid,hid,name,false);
+      shMsg("参加しました。これから2人のTODOが同期されます。");startCloud(u.uid,hid,name);
+    }catch(e){shMsg(errJa(e))}};
+  const out=()=>fbAuth.signOut();$("shOut1").onclick=out;$("shOut2").onclick=out;
+  $("shCopy").onclick=()=>{const t=$("shCodeOut").textContent;try{navigator.clipboard.writeText(t).then(()=>shMsg("招待コードをコピーしました。LINEなどで送ってください。"),()=>shMsg("コードを長押ししてコピーしてください。"))}catch(e){shMsg("コードを長押ししてコピーしてください。")}};
 }
 
 /* ---- 描画 ---- */
@@ -536,6 +690,8 @@ function itemRow(it){
   const dv=el("input","move");dv.type="date";dv.value=it.due||"";dv.setAttribute("aria-label","期限");
   dv.onchange=()=>patch(it,{due:dv.value||""});dl.append(dv);meta.append(dl);
   const bd=dueBadge(it);if(bd)meta.append(bd);
+  if(cloud&&(it.done?it.doneBy:it.by))meta.append(el("span","who",(it.done?it.doneBy+"が完了":it.by+"が追加")));
+  if(cloud&&!isSharedCat(it.tag))meta.append(el("span","who","自分だけ"));
   const db2=el("button","nbtn"+(it.note?" has":""),open?"詳細を閉じる":it.note?"詳細あり":"＋ 詳細");db2.type="button";
   db2.onclick=ttl.onclick;meta.append(db2);
   body.append(meta);
@@ -557,7 +713,7 @@ function itemRow(it){
     [ti,ta,ra].forEach(x=>{if(x){x.oninput=queue;x.onblur=save}});
     ti.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();ta.focus()}});
     dt.append(ti);
-    if(ra){const lb=el("div","dlabel res-l","結果"+(it.doneAt?" · "+fmtDone(it.doneAt)+" 完了":""));dt.append(lb,ra);dt.append(el("div","dlabel","詳細・メモ"))}
+    if(ra){const lb=el("div","dlabel res-l","結果"+(it.doneAt?" · "+fmtDone(it.doneAt)+" "+(it.doneBy?it.doneBy+"が":"")+"完了":""));dt.append(lb,ra);dt.append(el("div","dlabel","詳細・メモ"))}
     dt.append(ta,st);body.append(dt);
     if(ra&&focusResult===it.id){focusResult=null;setTimeout(()=>{ra.focus({preventScroll:true})},0)}
   }
@@ -650,7 +806,10 @@ function renderMgr(){
     inp.onchange=()=>{const v=inp.value.trim();if(v&&v!==c.name){c.name=v;saveCats()}else inp.value=c.name};
     const del=el("button","icon","削除");del.type="button";
     del.onclick=()=>{confirmDel=c.id;renderMgr()};
-    r.append(inp,swatches(c.color,col=>{c.color=col;saveCats()},c.name+"の色"),del);
+    const tg=el("button","shtoggle"+(c.shared===false?" priv":""),c.shared===false?"自分だけ":"夫婦で共有");tg.type="button";
+    tg.title="押すと切り替わります";
+    tg.onclick=()=>{const was=c.shared!==false;c.shared=!was;moveCatItems(c,was);saveCats()};
+    r.append(inp,swatches(c.color,col=>{c.color=col;saveCats()},c.name+"の色"),tg,del);
     if(confirmDel===c.id){
       const n=items.filter(i=>i.tag===c.id).length;
       const cf=el("div","confirm");
@@ -816,7 +975,12 @@ $("restoreFile").addEventListener("change",e=>{const f=e.target.files&&e.target.
     catch(err){bkMsg("このファイルはみらい手帳のバックアップではないようです。")}
     e.target.value=""};
   rd.readAsText(f)});
-$("restoreYes").onclick=()=>{if(!pending)return;$("pasteWrap").hidden=true;$("pasteIn").value="";items=pending.items;if(Array.isArray(pending.cats)&&pending.cats.length)cats=pending.cats;pending=null;$("restoreBox").hidden=true;saveLocal();render();renderMgr();bkMsg("バックアップの内容に戻しました。")};
+$("restoreYes").onclick=()=>{if(!pending)return;$("pasteWrap").hidden=true;$("pasteIn").value="";
+  if(cloud){const d=pending;pending=null;$("restoreBox").hidden=true;
+    if(Array.isArray(d.cats)&&d.cats.length){cats=d.cats;saveCats()}
+    d.items.forEach(it=>{const x=Object.assign({},it);if(!x.id)x.id=newId();colFor(x.tag).doc(x.id).set(strip(x)).catch(showErr)});
+    bkMsg("バックアップの内容を共有データに追加しました。");return}
+  items=pending.items;if(Array.isArray(pending.cats)&&pending.cats.length)cats=pending.cats;pending=null;$("restoreBox").hidden=true;saveLocal();render();renderMgr();bkMsg("バックアップの内容に戻しました。")};
 $("restoreNo").onclick=()=>{pending=null;$("restoreBox").hidden=true};
 function render(){renderRec();renderJump();renderHero();renderTabs();renderTags();renderCal();renderDay();renderUp()}
 
