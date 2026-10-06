@@ -153,12 +153,17 @@ button.month[aria-expanded=true] .caret{transform:rotate(180deg)}
 .chip{font-size:.72rem;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:1px 6px;border-radius:6px;background:color-mix(in srgb,var(--c,var(--ai)) 16%,var(--sheet));box-shadow:inset 2px 0 0 var(--c,var(--ai))}
 .chip.done{text-decoration:line-through;opacity:.5}
 .more{font-size:.66rem;color:var(--muted);padding-left:4px}
+.more.sp{display:none}
+@media (max-width:560px){.more.pc{display:none}.more.sp{display:block}}
 .dots{display:none;gap:3px;flex-wrap:wrap;padding-left:4px}
 .dots i{width:6px;height:6px;border-radius:3px;background:var(--c,var(--ai))}
 @media (max-width:560px){
-  .day{min-height:58px;padding:4px 2px}
-  .chip,.more,.hname{display:none}
-  .dots{display:flex}
+  .day{min-height:76px;padding:3px 2px;gap:2px}
+  .day .n{font-size:.85rem;padding:0 2px}
+  .hname,.dots{display:none}
+  .chip{font-size:.6rem;line-height:1.35;padding:1px 2px 1px 4px;border-radius:4px;text-overflow:clip;letter-spacing:-.02em}
+  .chip.c3{display:none}
+  .more{font-size:.58rem;padding-left:2px}
   .mnum{font-size:2.6rem}
   .hero{padding:16px}
   .stat{padding:8px 10px;gap:8px}
@@ -466,8 +471,9 @@ function renderCal(){
     b.append(el("span","n",String(d.getDate())));
     if(h)b.append(el("span","hname",h));
     if(list.length&&list.every(x=>x.done)){const hm=el("span","hanamaru");hm.innerHTML=HANAMARU;hm.title="ぜんぶ完了";b.append(hm);b.classList.add("alldone")}
-    list.slice(0,3).forEach(it=>{const c=el("span","chip"+(it.done?" done":""),it.text);c.style.setProperty("--c",catColor(it.tag));b.append(c)});
-    if(list.length>3)b.append(el("span","more","ほか"+(list.length-3)+"件"));
+    list.slice(0,3).forEach((it,ci)=>{const c=el("span","chip"+(it.done?" done":"")+(ci===2?" c3":""),it.text);c.style.setProperty("--c",catColor(it.tag));b.append(c)});
+    if(list.length>3)b.append(el("span","more pc","ほか"+(list.length-3)+"件"));
+    if(list.length>2)b.append(el("span","more sp","+"+(list.length-2)+"件"));
     if(list.length){const ds=el("span","dots");list.slice(0,5).forEach(it=>{const i2=el("i");i2.style.setProperty("--c",catColor(it.tag));ds.append(i2)});b.append(ds)}
     b.onclick=()=>{sel=k;if(d.getMonth()!==m){view=new Date(d.getFullYear(),d.getMonth(),1)}render();$("newtxt").focus({preventScroll:true})};
     box.append(b);
