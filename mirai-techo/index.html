@@ -152,6 +152,18 @@ button.month[aria-expanded=true] .caret{transform:rotate(180deg)}
 .hname{font-size:.62rem;color:var(--sun);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:4px}
 .chip{font-size:.72rem;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:1px 6px;border-radius:6px;background:color-mix(in srgb,var(--c,var(--ai)) 16%,var(--sheet));box-shadow:inset 2px 0 0 var(--c,var(--ai))}
 .chip.done{text-decoration:line-through;opacity:.5}
+.cal{touch-action:pan-y}
+.slide-l{animation:sl .28s ease-out}.slide-r{animation:sr .28s ease-out}
+@keyframes sl{from{transform:translateX(30px);opacity:.3}to{transform:none;opacity:1}}
+@keyframes sr{from{transform:translateX(-30px);opacity:.3}to{transform:none;opacity:1}}
+.swipehint{display:none;text-align:center;font-size:.68rem;color:var(--muted);padding:2px 0 6px}
+@media (hover:none){.swipehint{display:block}}
+.top{display:flex;align-items:center;gap:3px;align-self:flex-start}
+.shime{font-family:var(--f-display);font-weight:700;font-size:.7rem;color:var(--sheet);background:var(--warn);border-radius:4px;padding:0 3px;line-height:1.4}
+.duein{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted);flex-wrap:wrap}
+.duein input{border:1.5px solid var(--line);border-radius:10px;background:var(--paper);padding:4px 8px;font-family:var(--f-num)}
+.duelab{display:inline-flex;align-items:center;gap:2px;color:var(--warn);font-weight:700}
+.duepill{font-size:.66rem;padding:1px 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-weight:700}
 .more{font-size:.66rem;color:var(--muted);padding-left:4px}
 .more.sp{display:none}
 @media (max-width:560px){.more.pc{display:none}.more.sp{display:block}}
@@ -160,6 +172,7 @@ button.month[aria-expanded=true] .caret{transform:rotate(180deg)}
 @media (max-width:560px){
   .day{min-height:76px;padding:3px 2px;gap:2px}
   .day .n{font-size:.85rem;padding:0 2px}
+  .shime{font-size:.55rem;padding:0 2px}
   .hname,.dots{display:none}
   .chip{font-size:.6rem;line-height:1.4;padding:1px 3px;border-radius:4px;text-overflow:clip;letter-spacing:-.02em;box-shadow:none;background:color-mix(in srgb,var(--c,var(--ai)) 24%,var(--sheet));border-bottom:2px solid var(--c,var(--ai))}
   .chip.c3{display:none}
@@ -315,6 +328,7 @@ textarea.res:focus{border-color:var(--stamp)}
       <section class="cal" aria-label="月間カレンダー">
         <div class="dow"><div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div></div>
         <div class="days" id="days"></div>
+        <div class="swipehint">← 左右にスワイプで月を切り替え →</div>
       </section>
     </div>
 
@@ -324,6 +338,7 @@ textarea.res:focus{border-color:var(--stamp)}
         <p class="sub" id="dsub"></p>
         <form class="add" id="addf">
           <input type="text" id="newtxt" placeholder="この日にやることを入力" autocomplete="off" maxlength="200">
+          <label class="duein"><span>期限(任意)</span><input type="date" id="newdue"><button class="icon" type="button" id="duecl">クリア</button></label>
           <textarea id="newnote" rows="3" placeholder="詳細やメモ(任意)" hidden></textarea>
           <div class="row" id="tags"></div>
         </form>
@@ -387,13 +402,22 @@ const todayK=key(new Date());
 let view=new Date(); view.setDate(1);
 let sel=todayK, items=[], cats=DEFAULT_CATS.slice();
 let filter="all", addTag="work", newColor="c6", confirmDel=null, addingCat=false, justDone=null, openId=null;
-const drafts={};let focusResult=null,recAll=false;
+const drafts={};let swiped=false;let focusResult=null,recAll=false;
 const fmtDone=ms=>{const d=new Date(ms);return (d.getMonth()+1)+"/"+d.getDate()+" "+pad(d.getHours())+":"+pad(d.getMinutes())};
 
 const cat=id=>cats.find(c=>c.id===id);
 const catColor=id=>{const c=cat(id);return c?"var(--"+c.color+")":"var(--none)"};
 const catName=id=>cat(id)?.name||"未分類";
 const visible=it=>filter==="all"||it.tag===filter;
+const isOverdue=it=>!it.done&&(it.due?it.due<todayK:it.date<todayK);
+function dueBadge(it){
+  if(!it.due||it.done)return null;
+  const df=Math.round((parse(it.due)-parse(todayK))/864e5),d=parse(it.due);
+  if(df<0)return el("span","badge","期限切れ("+(d.getMonth()+1)+"/"+d.getDate()+")");
+  if(df===0)return el("span","badge","今日が期限");
+  if(df<=3)return el("span","soon","期限まであと"+df+"日");
+  return el("span","duepill","〆 "+(d.getMonth()+1)+"/"+d.getDate());
+}
 
 /* ---- 保存先:この端末の中だけ ---- */
 const LS="mirai-techo-todos", LSC="mirai-techo-cats";
@@ -468,14 +492,17 @@ function renderCal(){
     if(k<todayK)b.classList.add("past");
     if(k===sel)b.classList.add("sel");
     b.setAttribute("aria-label",(d.getMonth()+1)+"月"+d.getDate()+"日"+(h?" "+h:"")+(list.length?" TODO "+list.length+"件":""));
-    b.append(el("span","n",String(d.getDate())));
+    const top=el("span","top");top.append(el("span","n",String(d.getDate())));
+    const dues=items.filter(x=>x.due===k&&!x.done&&visible(x)).length;
+    if(dues){const sm=el("span","shime","〆");sm.title="期限 "+dues+"件";top.append(sm)}
+    b.append(top);
     if(h)b.append(el("span","hname",h));
     if(list.length&&list.every(x=>x.done)){const hm=el("span","hanamaru");hm.innerHTML=HANAMARU;hm.title="ぜんぶ完了";b.append(hm);b.classList.add("alldone")}
     list.slice(0,3).forEach((it,ci)=>{const c=el("span","chip"+(it.done?" done":"")+(ci===2?" c3":""),it.text);c.style.setProperty("--c",catColor(it.tag));b.append(c)});
     if(list.length>3)b.append(el("span","more pc","ほか"+(list.length-3)+"件"));
     if(list.length>2)b.append(el("span","more sp","+"+(list.length-2)+"件"));
     if(list.length){const ds=el("span","dots");list.slice(0,5).forEach(it=>{const i2=el("i");i2.style.setProperty("--c",catColor(it.tag));ds.append(i2)});b.append(ds)}
-    b.onclick=()=>{sel=k;if(d.getMonth()!==m){view=new Date(d.getFullYear(),d.getMonth(),1)}render();$("newtxt").focus({preventScroll:true})};
+    b.onclick=()=>{if(swiped)return;sel=k;if(d.getMonth()!==m){view=new Date(d.getFullYear(),d.getMonth(),1)}render();$("newtxt").focus({preventScroll:true})};
     box.append(b);
   }
 }
@@ -505,6 +532,10 @@ function itemRow(it){
   const mv=el("input","move");mv.type="date";mv.value=it.date;mv.setAttribute("aria-label","日付を変更");
   mv.onchange=()=>{if(mv.value)patch(it,{date:mv.value})};
   meta.append(mv);
+  const dl=el("label","duelab");dl.append("〆");
+  const dv=el("input","move");dv.type="date";dv.value=it.due||"";dv.setAttribute("aria-label","期限");
+  dv.onchange=()=>patch(it,{due:dv.value||""});dl.append(dv);meta.append(dl);
+  const bd=dueBadge(it);if(bd)meta.append(bd);
   const db2=el("button","nbtn"+(it.note?" has":""),open?"詳細を閉じる":it.note?"詳細あり":"＋ 詳細");db2.type="button";
   db2.onclick=ttl.onclick;meta.append(db2);
   body.append(meta);
@@ -583,16 +614,18 @@ function renderTags(){
 function renderUp(){
   const ul=$("ulist");ul.textContent="";
   const open=items.filter(i=>!i.done&&visible(i));
-  const overdue=open.filter(i=>i.date<todayK).sort((a,b)=>a.date<b.date?-1:1);
-  const next=open.filter(i=>i.date>=todayK).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.createdAt-b.createdAt).slice(0,12);
+  const overdue=open.filter(isOverdue).sort((a,b)=>((a.due||a.date)<(b.due||b.date)?-1:1));
+  const next=open.filter(i=>!isOverdue(i)).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.createdAt-b.createdAt).slice(0,12);
   if(!overdue.length&&!next.length){ul.append(el("li","empty",filter==="all"?"予定しているTODOはまだありません。カレンダーの日付を選んで、先の予定を書き込んでみましょう。":"「"+catName(filter)+"」の予定はまだありません。"));return}
   [...overdue,...next].forEach(it=>{
     const li=el("li");const d=parse(it.date);
     const dd=el("span","d");dd.append(el("b",null,(d.getMonth()+1)+"/"+d.getDate()),WD[d.getDay()]);
     const t=el("div","txt");t.append(el("div",null,it.text));
     const meta=el("div","meta");const tg=el("span","tg",catName(it.tag));tg.style.setProperty("--c",catColor(it.tag));meta.append(tg);
-    if(it.date<todayK)meta.append(el("span","badge","期限切れ"));
-    else{const df=Math.round((d-parse(todayK))/864e5);if(df===0)meta.append(el("span","soon","今日"));else if(df===1)meta.append(el("span","soon","明日"));else if(df<=3)meta.append(el("span","soon",df+"日後"))}
+    const bd=dueBadge(it);
+    if(bd)meta.append(bd);
+    else if(isOverdue(it))meta.append(el("span","badge","期限切れ"));
+    else if(it.date>=todayK){const df=Math.round((d-parse(todayK))/864e5);if(df===0)meta.append(el("span","soon","今日"));else if(df===1)meta.append(el("span","soon","明日"));else if(df<=3)meta.append(el("span","soon",df+"日後"))}
     if(it.note)meta.append(el("span","nmark","詳細あり"));
     t.append(meta);li.append(dd,t);
     li.onclick=()=>{sel=it.date;openId=it.id;view=new Date(d.getFullYear(),d.getMonth(),1);render()};
@@ -643,7 +676,7 @@ function renderHero(){
   $("ring").style.setProperty("--p",td.length?Math.round(dn/td.length*100):0);
   const end=new Date(now.getFullYear(),now.getMonth(),now.getDate()+(6-now.getDay()));const endK=key(end);
   $("stWeek").textContent=String(items.filter(i=>!i.done&&i.date>=todayK&&i.date<=endK).length);
-  const ov=items.filter(i=>!i.done&&i.date<todayK).length;
+  const ov=items.filter(isOverdue).length;
   $("stOver").textContent=String(ov);$("stOverBox").classList.toggle("alert",ov>0);
 }
 /* ---- 完了したときのごほうび ---- */
@@ -792,7 +825,8 @@ $("addf").addEventListener("submit",e=>{
   const v=$("newtxt").value.trim();if(!v)return;
   const note=$("newnote").value.trim();
   $("newtxt").value="";$("newnote").value="";$("newnote").hidden=true;renderTags();
-  addItem({date:sel,text:v,note,tag:addTag,done:false,createdAt:Date.now()});
+  const due=$("newdue").value||"";$("newdue").value="";
+  addItem({date:sel,text:v,note,due,tag:addTag,done:false,createdAt:Date.now()});
 });
 $("newcatf").addEventListener("submit",e=>{
   e.preventDefault();
@@ -803,8 +837,19 @@ $("newcatf").addEventListener("submit",e=>{
   saveCats();
 });
 $("mgrclose").onclick=()=>{$("mgr").hidden=true;confirmDel=null};
-$("prev").onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);render()};
-$("next").onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);render()};
+/* ---- 左右にスワイプで前月・翌月 ---- */
+(()=>{const cal=document.querySelector(".cal");let x0=null,y0=0,t0=0;
+  cal.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;x0=e.touches[0].clientX;y0=e.touches[0].clientY;t0=Date.now()},{passive:true});
+  cal.addEventListener("touchend",e=>{if(x0==null)return;const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0;x0=null;
+    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5&&Date.now()-t0<800){swiped=true;setTimeout(()=>{swiped=false},350);shiftMonth(dx<0?1:-1)}},{passive:true});
+})();
+function shiftMonth(n){
+  view=new Date(view.getFullYear(),view.getMonth()+n,1);render();
+  const d=$("days");if(!reduce){d.classList.remove("slide-l","slide-r");void d.offsetWidth;d.classList.add(n>0?"slide-l":"slide-r")}
+}
+$("prev").onclick=()=>shiftMonth(-1);
+$("next").onclick=()=>shiftMonth(1);
+$("duecl").onclick=()=>{$("newdue").value=""};
 $("stToday").onclick=()=>{view=new Date();view.setDate(1);sel=todayK;filter="all";render()};
 $("tday").onclick=()=>{view=new Date();view.setDate(1);sel=todayK;render()};
 
